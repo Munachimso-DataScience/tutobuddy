@@ -1,0 +1,47 @@
+# Appwrite Collection Structures
+
+## Collection: Users (Custom Profile Data)
+- **ID**: `users_profiles`
+- **Attributes**:
+    - `user_id` (string, 36): Unique Appwrite Auth ID
+    - `full_name` (string, 128): Student's full name
+    - `school` (string, 128): University name
+    - `course_of_study` (string, 128): Major
+    - `current_streak` (integer): Consecutive days studied
+    - `last_active` (datetime): Last activity timestamp
+    - `exam_date` (datetime): Target date for the final exam
+
+## Collection: Courses
+- **ID**: `courses`
+- **Attributes**:
+    - `title` (string, 255): Course name
+    - `description` (string, 2048): Course summary
+    - `code` (string, 20): Course code (e.g. CS101)
+    - `created_at` (datetime): Creation date
+
+## Collection: Study Materials
+- **ID**: `materials`
+- **Attributes**:
+    - `course_id` (string, 36): Reference to Courses collection
+    - `file_id` (string, 36): Reference to Appwrite Storage bucket
+    - `title` (string, 255): Name of the file/note
+    - `processed` (boolean): Whether AI has indexed this for quizzes
+    - `content_summary` (string, 2048): AI-generated summary
+
+## Collection: Activity Logs
+- **ID**: `activity_logs`
+- **Attributes**:
+    - `user_id` (string, 36): Reference to User
+    - `type` (string, 50): 'study_session', 'quiz_completed', 'material_view'
+    - `timestamp` (datetime): When it happened
+    - `details` (string, 512): Metadata (e.g. course_id)
+
+## Collection: Assessments
+- **ID**: `assessments`
+- **Attributes**:
+    - `user_id` (string, 36): Reference to User
+    - `course_id` (string, 36): Reference to Course
+    - `score` (integer): Percentage achieved
+    - `total_questions` (integer)
+    - `answers_json` (string, 15000): Detailed breakdown of answers/feedback
+    - `status` (string, 20): 'completed', 'graded'
