@@ -31,10 +31,33 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
     const [loadingAI, setLoadingAI] = useState(false);
     const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
+    const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
+        try {
+            const { jwt } = await account.createJWT();
+            await axios.post('http://localhost:5000/api/activity/log', {
+                type: isCorrect ? 'quiz_correct' : 'quiz_incorrect',
+                details: {
+                    question_id: currentIndex,
+                    question_text: currentQuestion.question,
+                    user_answer: userAnswer,
+                    correct_answer: currentQuestion.answer
+                }
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+        } catch (error) {
+            console.error('Failed to log quiz activity:', error);
+        }
+    };
+
     const handleAnswer = async (answer: string) => {
         setAnswers({ ...answers, [currentIndex]: answer });
+        const isCorrect = answer === currentQuestion.answer;
         
-        if (currentQuestion.type === 'mcq' && answer !== currentQuestion.answer) {
+        // Log the activity
+        logQuizActivity(isCorrect, answer);
+
+        if (currentQuestion.type === 'mcq' && !isCorrect) {
             setLoadingAI(true);
             try {
                 const { jwt } = await account.createJWT();

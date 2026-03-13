@@ -17,6 +17,7 @@ export default function CoursesPage() {
     const [title, setTitle] = useState('');
     const [code, setCode] = useState('');
     const [description, setDescription] = useState('');
+    const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -42,8 +43,19 @@ export default function CoursesPage() {
         setIsSubmitting(true);
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/courses', { title, code, description }, {
-                headers: { Authorization: `Bearer ${jwt}` }
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('code', code);
+            formData.append('description', description);
+            if (file) {
+                formData.append('file', file);
+            }
+
+            await axios.post('http://localhost:5000/api/courses', formData, {
+                headers: { 
+                    Authorization: `Bearer ${jwt}`,
+                    'Content-Type': 'multipart/form-data'
+                }
             });
             toast.success('Course added successfully!');
             setIsModalOpen(false);
@@ -52,6 +64,7 @@ export default function CoursesPage() {
             setTitle('');
             setCode('');
             setDescription('');
+            setFile(null);
         } catch (error: any) {
             toast.error(error.response?.data?.error || 'Failed to add course');
         } finally {
@@ -163,6 +176,18 @@ export default function CoursesPage() {
                                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
                                         placeholder="Briefly describe what this course covers..."
                                     />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Initial Study Material (Optional)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            accept=".pdf,.docx,.doc,.txt"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">Supported formats: PDF, DOCX, TXT (Max 10MB)</p>
                                 </div>
                                 <div className="pt-4">
                                     <button

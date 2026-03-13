@@ -6,7 +6,7 @@ import path from 'path';
 
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
 const COLLECTION_MATERIALS = 'study_materials';
-const BUCKET_ID = process.env.APPWRITE_BUCKET_ID || 'study_materials';
+const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 
 export const uploadMaterial = async (req: any, res: any) => {
     try {

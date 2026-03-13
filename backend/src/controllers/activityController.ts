@@ -23,27 +23,30 @@ export const logActivity = async (req: any, res: any) => {
         );
 
         // Update last_active and check streak
-        const profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
-        const lastActive = new Date(profile.last_active);
-        const today = new Date();
+        try {
+            const profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
+            const lastActive = new Date(profile.last_active);
+            const today = new Date();
 
-        // Simple streak logic: if last active was yesterday, increment. If today, stay. If older, reset.
-        const diffTime = Math.abs(today.getTime() - lastActive.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffTime = Math.abs(today.getTime() - lastActive.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        let newStreak = profile.current_streak;
-        if (diffDays === 1) {
-            newStreak += 1;
-        } else if (diffDays > 1) {
-            newStreak = 1;
+            let newStreak = profile.current_streak;
+            if (diffDays === 1) {
+                newStreak += 1;
+            } else if (diffDays > 1) {
+                newStreak = 1;
+            }
+
+            await databases.updateDocument(DATABASE_ID, COLLECTION_PROFILES, userId, {
+                last_active: today.toISOString(),
+                current_streak: newStreak
+            });
+        } catch (profileError) {
+            console.warn(`Could not update profile for user ${userId}:`, profileError);
         }
 
-        await databases.updateDocument(DATABASE_ID, COLLECTION_PROFILES, userId, {
-            last_active: today.toISOString(),
-            current_streak: newStreak
-        });
-
-        res.status(201).json({ log, streak: newStreak });
+        res.status(201).json({ log, streak: 0 });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

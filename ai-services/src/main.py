@@ -94,6 +94,14 @@ async def extract_text(file: UploadFile = File(...)):
             for page in reader.pages:
                 text += page.extract_text() or ""
             return {"text": text}
+        elif file.filename.endswith('.docx'):
+            try:
+                import docx
+                doc = docx.Document(io.BytesIO(content))
+                text = "\n".join([para.text for para in doc.paragraphs])
+                return {"text": text}
+            except ImportError:
+                raise HTTPException(status_code=500, detail="python-docx not installed on server")
         elif file.filename.endswith('.txt'):
             return {"text": content.decode('utf-8')}
         else:
@@ -178,13 +186,31 @@ async def explain_incorrect(data: dict):
         question = data.get("question")
         user_answer = data.get("user_answer")
         correct_answer = data.get("correct_answer")
+        context = data.get("context", "")
         
         # Simple rule-based explanation
-        explanation = f"You selected '{user_answer}', but the correct answer is '{correct_answer}'. "
+        explanation = f"You selected '{user_answer}', but the correct answer is '{correct_answer}'.\n\n"
+        
+        if context:
+            explanation += f"Referencing your study notes: \"{context}\".\n\n"
+        
         explanation += f"In the context of the study material provided, '{correct_answer}' is the precise term that fulfills the requirements of the question. "
         explanation += "Review the relevant section to strengthen your understanding of this concept."
         
-        return {"explanation": explanation}
+        topic_query = correct_answer if correct_answer else "General knowledge"
+        safe_query = topic_query.replace(' ', '+')
+        
+        links = [
+            { "title": f"Understanding {topic_query} - Khan Academy", "url": f"https://www.khanacademy.org/search?page_search_query={safe_query}" },
+            { "title": f"{topic_query} Tutorial - YouTube", "url": f"https://www.youtube.com/results?search_query={safe_query}" },
+            { "title": f"Articles on {topic_query} - Wikipedia", "url": f"https://en.wikipedia.org/wiki/Special:Search?search={safe_query}" }
+        ]
+
+        return {
+            "explanation": explanation,
+            "suggestions": f"Consider reviewing introductory materials and video lectures on '{topic_query}' to strengthen your core understanding before attempting another similar quiz.",
+            "links": links
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1,7 +1,9 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { authMiddleware } from './middleware/auth';
 import { createCourse, getCourses } from './controllers/courseController';
 import { uploadMaterial, getMaterials } from './controllers/materialController';
@@ -10,10 +12,10 @@ import { generateQuiz, getQuizzes } from './controllers/quizController';
 import { getExplanation, getHint } from './controllers/feedbackController';
 import { checkInactivity, generateWeeklyReports } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
+import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
+import { getSchedules, createSchedule, deleteSchedule } from './controllers/scheduleController';
 import { initScheduler } from './utils/scheduler';
 import multer from 'multer';
-
-dotenv.config();
 
 const app = express();
 initScheduler();
@@ -29,7 +31,7 @@ app.get('/health', (req, res) => {
 });
 
 // Protected Course Routes
-app.post('/api/courses', authMiddleware, createCourse);
+app.post('/api/courses', authMiddleware, upload.single('file'), createCourse);
 app.get('/api/courses', authMiddleware, getCourses);
 
 // Material Routes
@@ -53,7 +55,19 @@ app.post('/api/notifications/check-inactivity', authMiddleware, checkInactivity)
 app.post('/api/notifications/weekly-report', authMiddleware, generateWeeklyReports);
 
 // Analytics Routes
+app.get('/api/analytics/weakness', authMiddleware, getWeaknessAnalysis);
 app.get('/api/analytics/weaknesses', authMiddleware, getWeaknessAnalysis);
+
+// Task Routes
+app.get('/api/tasks', authMiddleware, getTasks);
+app.post('/api/tasks', authMiddleware, createTask);
+app.patch('/api/tasks/:taskId', authMiddleware, updateTaskStatus);
+app.delete('/api/tasks/:taskId', authMiddleware, deleteTask);
+
+// Schedule Routes
+app.get('/api/schedules', authMiddleware, getSchedules);
+app.post('/api/schedules', authMiddleware, createSchedule);
+app.delete('/api/schedules/:scheduleId', authMiddleware, deleteSchedule);
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
