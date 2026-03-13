@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { account } from '@/lib/appwrite';
 import { Target, TrendingDown, BookOpen, Award } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
@@ -12,9 +13,9 @@ export default function AnalyticsDashboard() {
     useEffect(() => {
         const fetchAnalysis = async () => {
             try {
-                const token = localStorage.getItem('appwrite_session');
+                const { jwt } = await account.createJWT();
                 const res = await axios.get('http://localhost:5000/api/analytics/weaknesses', {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${jwt}` }
                 });
                 setAnalysis(res.data);
             } catch (error) {

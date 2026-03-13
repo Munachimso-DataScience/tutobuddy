@@ -1,10 +1,12 @@
 import { databases, storage } from '../lib/appwrite-admin';
-import { ID, Query, InputFile } from 'node-appwrite';
+import { ID, Query } from 'node-appwrite';
+// @ts-ignore
+import { InputFile } from 'node-appwrite/dist/inputFile';
 import fs from 'fs';
 import path from 'path';
 
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const COLLECTION_MATERIALS = 'materials';
+const COLLECTION_MATERIALS = 'study_materials';
 const BUCKET_ID = process.env.APPWRITE_BUCKET_ID || 'study_materials';
 
 export const uploadMaterial = async (req: any, res: any) => {
@@ -32,8 +34,8 @@ export const uploadMaterial = async (req: any, res: any) => {
                 course_id: courseId,
                 file_id: appwriteFile.$id,
                 title: title || file.originalname,
-                processed: false,
-                created_at: new Date().toISOString()
+                type: path.extname(file.originalname).substring(1) || 'unknown',
+                uploaded_at: new Date().toISOString()
             }
         );
 

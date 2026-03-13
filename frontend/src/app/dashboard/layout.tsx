@@ -17,18 +17,32 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const SidebarItem = ({ icon: Icon, label, active = false }: { icon: any, label: string, active?: boolean }) => (
-    <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 ${active
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-        }`}>
-        <Icon className="h-5 w-5" />
-        <span className="font-medium text-sm">{label}</span>
-    </div>
+import Link from 'next/link';
+
+const SidebarItem = ({ icon: Icon, label, href, active = false }: { icon: any, label: string, href: string, active?: boolean }) => (
+    <Link href={href}>
+        <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 ${active
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}>
+            <Icon className="h-5 w-5" />
+            <span className="font-medium text-sm">{label}</span>
+        </div>
+    </Link>
 );
+
+import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, logout } = useAuth();
+    const pathname = usePathname();
+
+    const navItems = [
+        { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+        { icon: BookOpen, label: "My Courses", href: "/dashboard/courses" },
+        { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
+        { icon: History, label: "Tasks", href: "/dashboard/tasks" },
+    ];
 
     return (
         <ProtectedRoute>
@@ -45,15 +59,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
 
                     <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-                        <SidebarItem icon={LayoutDashboard} label="Dashboard" active />
-                        <SidebarItem icon={BookOpen} label="My Courses" />
-                        <SidebarItem icon={ClipboardList} label="Assessments" />
-                        <SidebarItem icon={History} label="Study Sessions" />
-                        <SidebarItem icon={BarChart3} label="Analytics" />
+                        {navItems.map((item) => (
+                            <SidebarItem 
+                                key={item.href}
+                                icon={item.icon} 
+                                label={item.label} 
+                                href={item.href}
+                                active={pathname === item.href}
+                            />
+                        ))}
                         <div className="pt-4 pb-2 px-4">
                             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</span>
                         </div>
-                        <SidebarItem icon={Settings} label="Settings" />
+                        <SidebarItem icon={Settings} label="Settings" href="/dashboard/settings" active={pathname === '/dashboard/settings'} />
                     </nav>
 
                     <div className="p-4 border-t border-gray-200 dark:border-gray-800">

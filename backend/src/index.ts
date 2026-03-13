@@ -16,7 +16,7 @@ import multer from 'multer';
 dotenv.config();
 
 const app = express();
-initScheduler();
+// initScheduler();
 const upload = multer({ dest: 'uploads/' });
 const port = process.env.PORT || 5000;
 

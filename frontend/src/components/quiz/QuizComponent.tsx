@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
 import axios from 'axios';
+import { account } from '@/lib/appwrite';
 
 interface Question {
     type: 'mcq' | 'short' | 'essay';
@@ -36,14 +37,14 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
         if (currentQuestion.type === 'mcq' && answer !== currentQuestion.answer) {
             setLoadingAI(true);
             try {
-                const token = localStorage.getItem('appwrite_session');
+                const { jwt } = await account.createJWT();
                 const res = await axios.post('http://localhost:5000/api/feedback/explain', {
                     question: currentQuestion.question,
                     userAnswer: answer,
                     correctAnswer: currentQuestion.answer,
                     context: currentQuestion.explanation // Use static explanation as context for AI
                 }, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${jwt}` }
                 });
                 setAiFeedback(res.data.explanation);
             } catch (error) {

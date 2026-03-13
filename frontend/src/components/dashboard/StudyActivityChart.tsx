@@ -3,21 +3,34 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const data = [
-    { day: 'Mon', hours: 2.5 },
-    { day: 'Tue', hours: 3.8 },
-    { day: 'Wed', hours: 1.2 },
-    { day: 'Thu', hours: 4.5 },
-    { day: 'Fri', hours: 2.9 },
-    { day: 'Sat', hours: 5.1 },
-    { day: 'Sun', hours: 3.4 },
-];
+interface StudyActivityChartProps {
+    logs?: any[];
+}
 
-export default function StudyActivityChart() {
+export default function StudyActivityChart({ logs = [] }: StudyActivityChartProps) {
+    // Process logs into daily activity
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date().getDay();
+    
+    // Create last 7 days array
+    const chartData = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        const dayLabel = days[d.getDay()];
+        
+        // Count logs for this specific date
+        const count = logs.filter(log => {
+            const logDate = new Date(log.timestamp);
+            return logDate.toDateString() === d.toDateString();
+        }).length;
+
+        return { day: dayLabel, count: count || 0.1 }; // 0.1 for minimal visual presence
+    });
+
     return (
         <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
+                <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                     <XAxis
                         dataKey="day"
@@ -38,11 +51,14 @@ export default function StudyActivityChart() {
                         }}
                     />
                     <Bar
-                        dataKey="hours"
+                        dataKey="count"
                         radius={[6, 6, 0, 0]}
                     >
-                        {data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={index === 5 ? '#2563eb' : '#93c5fd'} />
+                        {chartData.map((entry, index) => (
+                            <Cell 
+                                key={`cell-${index}`} 
+                                fill={index === 6 ? '#2563eb' : '#93c5fd'} 
+                            />
                         ))}
                     </Bar>
                 </BarChart>

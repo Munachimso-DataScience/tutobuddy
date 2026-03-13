@@ -36,7 +36,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (email: string, pass: string) => {
         setLoading(true);
         try {
-            await account.createEmailPasswordSession(email, pass);
+            try {
+                await account.createEmailPasswordSession(email, pass);
+            } catch (error: any) {
+                // If a session is already active, delete it first and try again
+                if (error.code === 401 || error.type === 'general_session_already_exists') {
+                    try {
+                        await account.deleteSession('current');
+                    } catch (e) {}
+                    await account.createEmailPasswordSession(email, pass);
+                } else {
+                    throw error;
+                }
+            }
             await checkUser();
         } finally {
             setLoading(false);

@@ -17,7 +17,7 @@ export const logActivity = async (req: any, res: any) => {
             {
                 user_id: userId,
                 type,
-                details: JSON.stringify(details),
+                description: JSON.stringify(details),
                 timestamp: new Date().toISOString()
             }
         );
@@ -52,7 +52,16 @@ export const logActivity = async (req: any, res: any) => {
 export const getStats = async (req: any, res: any) => {
     try {
         const userId = req.user.$id;
-        const profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
+        let profile;
+        try {
+            profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
+        } catch (e) {
+            // Default profile if not found
+            profile = {
+                current_streak: 0,
+                last_active: new Date().toISOString()
+            };
+        }
 
         // Get activity counts for the last 7 days
         const lastWeek = new Date();

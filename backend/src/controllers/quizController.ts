@@ -33,7 +33,7 @@ export const generateQuiz = async (req: any, res: any) => {
             num_questions: 5
         });
 
-        const quizData = JSON.parse(quizRes.data.quiz);
+        const quizData = quizRes.data.quiz;
 
         // 4. Store in Appwrite
         const quizDoc = await databases.createDocument(
@@ -43,7 +43,7 @@ export const generateQuiz = async (req: any, res: any) => {
             {
                 user_id: userId,
                 material_id: materialId,
-                content: JSON.stringify(quizData),
+                content: typeof quizData === 'string' ? quizData : JSON.stringify(quizData),
                 created_at: new Date().toISOString()
             }
         );

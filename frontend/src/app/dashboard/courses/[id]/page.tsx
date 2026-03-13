@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useStudyHeartbeat } from '@/hooks/useStudyHeartbeat';
+import { account } from '@/lib/appwrite';
 import QuizComponent from '@/components/quiz/QuizComponent';
 
 export default function CourseDetailsPage() {
@@ -41,9 +42,9 @@ export default function CourseDetailsPage() {
 
     const fetchMaterials = async () => {
         try {
-            const token = localStorage.getItem('appwrite_session');
+            const { jwt } = await account.createJWT();
             const response = await axios.get(`http://localhost:5000/api/materials/${courseId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${jwt}` }
             });
             setMaterials(response.data);
         } catch (error) {
@@ -56,11 +57,11 @@ export default function CourseDetailsPage() {
     const handleGenerateQuiz = async (materialId: string) => {
         setGeneratingQuiz(true);
         try {
-            const token = localStorage.getItem('appwrite_session');
+            const { jwt } = await account.createJWT();
             const response = await axios.post('http://localhost:5000/api/quizzes/generate', {
                 materialId
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${jwt}` }
             });
             
             const quizContent = JSON.parse(response.data.content);
@@ -85,11 +86,11 @@ export default function CourseDetailsPage() {
         formData.append('title', file.name);
 
         try {
-            const token = localStorage.getItem('appwrite_session');
+            const { jwt } = await account.createJWT();
             await axios.post('http://localhost:5000/api/materials/upload', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${jwt}`
                 }
             });
             toast.success('Document uploaded and ready for analysis!');
@@ -165,7 +166,7 @@ export default function CourseDetailsPage() {
                                                     {file.title}
                                                 </p>
                                                 <p className="text-xs text-gray-500 font-medium">
-                                                    Added {new Date(file.created_at).toLocaleDateString()}
+                                                    Added {new Date(file.uploaded_at || file.$createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
                                         </div>

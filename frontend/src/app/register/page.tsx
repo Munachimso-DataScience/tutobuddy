@@ -24,8 +24,17 @@ export default function RegisterPage() {
             // 1. Create Appwrite Account
             const userAccount = await account.create(AppwriteID.unique(), email, password, fullName);
 
-            // 2. Login
-            await account.createEmailPasswordSession(email, password);
+            // 2. Login (Handle active sessions)
+            try {
+                await account.createEmailPasswordSession(email, password);
+            } catch (error: any) {
+                if (error.code === 401 || error.type === 'general_session_already_exists') {
+                    try { await account.deleteSession('current'); } catch (e) {}
+                    await account.createEmailPasswordSession(email, password);
+                } else {
+                    throw error;
+                }
+            }
 
             // 3. Create Profile in Database
             await databases.createDocument(

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { account } from '@/lib/appwrite';
 import CourseCard from '@/components/courses/CourseCard';
 import { Plus, Search, Loader2, X, BookPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,9 +25,9 @@ export default function CoursesPage() {
 
     const fetchCourses = async () => {
         try {
-            const token = localStorage.getItem('appwrite_session'); // Or get from Context
+            const { jwt } = await account.createJWT();
             const response = await axios.get('http://localhost:5000/api/courses', {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${jwt}` }
             });
             setCourses(response.data);
         } catch (error) {
@@ -40,9 +41,9 @@ export default function CoursesPage() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('appwrite_session');
+            const { jwt } = await account.createJWT();
             await axios.post('http://localhost:5000/api/courses', { title, code, description }, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${jwt}` }
             });
             toast.success('Course added successfully!');
             setIsModalOpen(false);
