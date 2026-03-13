@@ -27,26 +27,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load Spacy model with robust fallback
-nlp = None
-try:
-    nlp = spacy.load("en_core_web_sm")
-except Exception as e:
-    print(f"Warning: Could not load spacy model en_core_web_sm. Exception: {e}")
-    # Try one manual download but don't crash if it fails
+# Global NLP model
+_nlp = None
+
+def get_nlp():
+    global _nlp
+    if _nlp is not None:
+        return _nlp
+    
     try:
-        os.system(f"{os.sys.executable} -m spacy download en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
-    except:
-        print("Warning: Spacy model download failed. Using basic NLP fallback.")
-        nlp = None
+        # Avoid hanging on load - if this fails or hangs, we use fallbacks
+        import spacy
+        print("Loading Spacy model en_core_web_sm...")
+        _nlp = spacy.load("en_core_web_sm")
+        print("Spacy model loaded successfully.")
+    except Exception as e:
+        print(f"Warning: Spacy load failed ({e}). Using simple text fallback.")
+        _nlp = None
+    return _nlp
 
 def get_simple_keywords(text):
     """Simple keyword extraction fallback when spacy is unavailable"""
     words = text.lower().split()
     # Filter out common stop words and short words
-    stop_words = {'this', 'that', 'with', 'from', 'there', 'their', 'under', 'these', 'would', 'could'}
-    keywords = [w.strip('.,!?;:"()') for w in words if len(w) > 4 and w not in stop_words]
+    stop_words = {'this', 'that', 'with', 'from', 'there', 'their', 'under', 'these', 'would', 'could', 'about', 'which'}
+    keywords = [w.strip('.,!?;:"()') for w in words if len(w) > 4 and w not in stop_words and w.isalnum()]
     return keywords
 
 @app.get("/")
@@ -116,15 +121,21 @@ async def generate_quiz(data: dict):
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
             
-        doc = nlp(text)
-        
-        # 1. Extract Keywords (Nouns/Proper Nouns)
-        keywords = [token.text for token in doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4]
-        keyword_freq = Counter(keywords).most_common(20)
-        top_keywords = [k[0] for k in keyword_freq]
-        
-        # 2. Extract Sentences containing top keywords
-        sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 30]
+        nlp = get_nlp()
+        if nlp:
+            doc = nlp(text)
+            # 1. Extract Keywords (Nouns/Proper Nouns)
+            keywords = [token.text for token in doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4]
+            keyword_freq = Counter(keywords).most_common(20)
+            top_keywords = [k[0] for k in keyword_freq]
+            
+            # 2. Extract Sentences containing top keywords
+            sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 30]
+        else:
+            # Simple fallback extraction
+            top_keywords = Counter(get_simple_keywords(text)).most_common(20)
+            top_keywords = [k[0] for k in top_keywords]
+            sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 30]
         
         questions = []
         
@@ -261,6 +272,7 @@ async def analyze_weakness(data: dict):
         all_text = " ".join([d.get("question", "") + " " + d.get("correct_answer", "") for d in incorrect_data])
         
         keywords = []
+        nlp = get_nlp()
         if nlp:
             doc = nlp(all_text)
             # Extract keywords from incorrect questions

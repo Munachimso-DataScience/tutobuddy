@@ -2,9 +2,10 @@ import { databases, storage } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 import axios from 'axios';
 import fs from 'fs';
+import fetch from 'node-fetch';
 
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const BUCKET_ID = 'study_materials';
+const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 const COLLECTION_QUIZZES = 'quizzes';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -14,26 +15,33 @@ export const generateQuiz = async (req: any, res: any) => {
         const userId = req.user.$id;
 
         // 1. Get material file from database to get file_id and course_id
-        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);
+        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);        // 2. Get file content from storage (ArrayBuffer)
+        const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
         
-        // 2. Get file content from storage
-        const fileContent = await storage.getFileView(BUCKET_ID, material.file_id);
-        
-        // 3. Prepare for AI service (using FormData from Node 20 or form-data package)
-        // Since we are in Node 20, let's use what's available or simple Buffer if AI service supports it.
-        // We'll use axios with a Buffer directly if possible, but the AI service expects "file".
-        
+        // 3. Prepare for AI service
         const formData = new (require('form-data'))();
-        formData.append('file', Buffer.from(fileContent), {
-            filename: 'material.pdf', // default extension
-            contentType: 'application/pdf',
+        // fileContent is an ArrayBuffer from node-appwrite, convert it directly to Buffer
+        const buffer = Buffer.from(fileContent);
+
+        formData.append('file', buffer, {
+            filename: `material.${material.type || 'txt'}`,
+            contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
         });
 
-        // 4. Extract text (using AI service)
-        const extractionRes = await axios.post(`${AI_SERVICE_URL}/extract-text`, formData, {
-            headers: { ...formData.getHeaders() }
+        // 4. Extract text (using AI service with fetch to avoid Axios buffer issues)
+        const extractionRes = await fetch(`${AI_SERVICE_URL}/extract-text`, {
+            method: 'POST',
+            body: formData as any,
+            headers: formData.getHeaders()
         });
-        const text = extractionRes.data.text;
+
+        if (!extractionRes.ok) {
+            const errText = await extractionRes.text();
+            throw new Error(`AI Extraction failed: ${errText}`);
+        }
+
+        const extractionData: any = await extractionRes.json();
+        const text = extractionData.text;
 
         // 5. Generate Quiz
         const quizRes = await axios.post(`${AI_SERVICE_URL}/generate-quiz`, {
@@ -56,6 +64,19 @@ export const generateQuiz = async (req: any, res: any) => {
                 created_at: new Date().toISOString()
             }
         );
+
+        // 7. Update course completion tracking
+        try {
+            const course = await databases.getDocument(DATABASE_ID, 'courses', material.course_id);
+            const newProgress = Math.min((course.progress || 0) + 5, 100);
+            const newReadiness = Math.min((course.exam_readiness || 0) + 5, 100);
+            await databases.updateDocument(DATABASE_ID, 'courses', material.course_id, {
+                progress: newProgress,
+                exam_readiness: newReadiness
+            });
+        } catch (e) {
+            console.warn('Silent skip: Failed to update course progress tracking:', e);
+        }
 
         res.status(201).json(quizDoc);
     } catch (error: any) {

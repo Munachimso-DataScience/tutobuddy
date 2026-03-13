@@ -17,6 +17,7 @@ export default function CoursesPage() {
     const [title, setTitle] = useState('');
     const [code, setCode] = useState('');
     const [description, setDescription] = useState('');
+    const [examDate, setExamDate] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,6 +48,7 @@ export default function CoursesPage() {
             formData.append('title', title);
             formData.append('code', code);
             formData.append('description', description);
+            if (examDate) formData.append('exam_date', examDate);
             if (file) {
                 formData.append('file', file);
             }
@@ -64,6 +66,7 @@ export default function CoursesPage() {
             setTitle('');
             setCode('');
             setDescription('');
+            setExamDate('');
             setFile(null);
         } catch (error: any) {
             toast.error(error.response?.data?.error || 'Failed to add course');
@@ -175,6 +178,15 @@ export default function CoursesPage() {
                                         onChange={(e) => setDescription(e.target.value)}
                                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
                                         placeholder="Briefly describe what this course covers..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Exam Date (Optional)</label>
+                                    <input
+                                        type="date"
+                                        value={examDate}
+                                        onChange={(e) => setExamDate(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all text-gray-900 dark:text-white"
                                     />
                                 </div>
                                 <div className="space-y-1">

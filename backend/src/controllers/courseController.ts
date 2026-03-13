@@ -12,21 +12,28 @@ const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 
 export const createCourse = async (req: any, res: any) => {
     try {
-        const { title, description, code } = req.body;
+        const { title, description, code, exam_date } = req.body;
         const studentId = req.user.$id;
         const file = (req as any).file;
 
         // 1. Create Course
+        const courseData: any = {
+            name: title,
+            code,
+            student_id: studentId,
+            progress: 0,
+            exam_readiness: 0
+        };
+
+        if (exam_date) {
+            courseData.exam_date = new Date(exam_date).toISOString();
+        }
+
         const course = await databases.createDocument(
             DATABASE_ID,
             COLLECTION_COURSES,
             ID.unique(),
-            {
-                name: title,
-                code,
-                student_id: studentId,
-                progress: 0
-            }
+            courseData
         );
 
         // 2. If file uploaded, handle it
