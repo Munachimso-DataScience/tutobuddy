@@ -1,7 +1,6 @@
 import { databases, storage } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
-// @ts-ignore
-import { InputFile } from 'node-appwrite/dist/inputFile';
+const { InputFile } = require('node-appwrite/file');
 import fs from 'fs';
 import path from 'path';
 
