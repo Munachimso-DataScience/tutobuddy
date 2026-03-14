@@ -1,0 +1,60 @@
+services:
+  # 1. AI SERVICE (Python FastAPI)
+  - type: web
+    name: tutobuddy-ai
+    env: python
+    rootDir: ai-services
+    plan: starter # Starter plan is recommended for NLP memory
+    buildCommand: "pip install -r requirements.txt && python -m spacy download en_core_web_sm"
+    startCommand: "gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PORT
+        value: 8000
+
+  # 2. BACKEND API (Node.js Express)
+  - type: web
+    name: tutobuddy-backend
+    env: node
+    rootDir: backend
+    plan: starter
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    envVars:
+      - key: AI_SERVICE_URL
+        fromService:
+          name: tutobuddy-ai
+          type: web
+          property: url
+      - key: APPWRITE_ENDPOINT
+        sync: false # Set this in the Render Dashboard
+      - key: APPWRITE_PROJECT_ID
+        sync: false
+      - key: APPWRITE_DATABASE_ID
+        sync: false
+      - key: APPWRITE_STORAGE_ID
+        sync: false
+      - key: APPWRITE_API_KEY
+        sync: false
+
+  # 3. FRONTEND (Next.js)
+  - type: web
+    name: tutobuddy-frontend
+    env: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: tutobuddy-backend
+          type: web
+          property: url
+      - key: NEXT_PUBLIC_APPWRITE_ENDPOINT
+        sync: false
+      - key: NEXT_PUBLIC_APPWRITE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_APPWRITE_DATABASE_ID
+        sync: false
+      - key: NEXT_PUBLIC_APPWRITE_STORAGE_ID
+        sync: false

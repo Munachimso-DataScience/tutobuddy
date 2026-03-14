@@ -229,11 +229,55 @@ async def explain_incorrect(data: dict):
 async def get_hint(data: dict):
     try:
         correct_answer = data.get("correct_answer", "")
+        question = data.get("question", "")
+        
+        hint_text = ""
         if correct_answer:
-            hint = f"Think about concepts related to '{correct_answer[0]}...{correct_answer[-1]}'. It has {len(correct_answer)} letters."
+            hint_text = f"Think about a term that starts with '{correct_answer[0]}' and has {len(correct_answer)} letters."
         else:
-            hint = "Try looking for definitions involving key nouns in the question."
-        return {"hint": hint}
+            hint_text = "Try identifying the core subject mentioned in the question."
+
+        # Generate external links for the hint
+        search_query = correct_answer if correct_answer else question[:30]
+        safe_query = search_query.replace(' ', '+')
+        
+        links = [
+            { "title": "Watch related Video", "url": f"https://www.youtube.com/results?search_query={safe_query}+explained" },
+            { "title": "Read Article", "url": f"https://en.wikipedia.org/wiki/Special:Search?search={safe_query}" }
+        ]
+
+        return {
+            "hint": hint_text,
+            "resources": links
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/reinforcement-template")
+async def reinforcement_template(data: dict):
+    """Generates a structured revision template based on quiz performance"""
+    try:
+        topic = data.get("topic", "General Study")
+        weaknesses = data.get("weaknesses", [])
+        
+        template = f"# study reinforcement: {topic}\n\n"
+        template += "## 🎯 Key Learning Objective\n"
+        template += f"Master the fundamental concepts of {topic}, specifically focusing on area(s): {', '.join(weaknesses) if weaknesses else 'core principles'}.\n\n"
+        
+        template += "## 🧠 Active Recall Questions\n"
+        for i, w in enumerate(weaknesses[:3] if weaknesses else ["primary concept", "secondary application"]):
+            template += f"{i+1}. How would you define {w} in your own words?\n"
+            template += f"{i+1}b. What is a real-world example of {w}?\n"
+            
+        template += "\n## 📝 Targeted Notes Area\n"
+        template += "> Use this space to summarize the logic behind your previous incorrect answers.\n\n\n"
+        
+        template += "## 🚀 Next Steps\n"
+        template += "1. Review the Wikipedia articles linked in your hints.\n"
+        template += "2. Explain this topic to a friend (Feynman Technique).\n"
+        template += "3. Re-take the AI quiz in 24 hours (Spaced Repetition).\n"
+
+        return {"template": template}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

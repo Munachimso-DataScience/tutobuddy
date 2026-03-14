@@ -21,11 +21,11 @@ export const getExplanation = async (req: any, res: any) => {
 
 export const getHint = async (req: any, res: any) => {
     try {
-        const { question, context } = req.body;
+        const { question, correct_answer } = req.body;
         
         const response = await axios.post(`${AI_SERVICE_URL}/get-hint`, {
             question,
-            context
+            correct_answer
         });
 
         res.status(200).json(response.data);

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X } from 'lucide-react';
 import axios from 'axios';
 import { account } from '@/lib/appwrite';
 
@@ -32,6 +32,8 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
     const [loadingAI, setLoadingAI] = useState(false);
     const [aiFeedback, setAiFeedback] = useState<string | null>(null);
     const [essayResult, setEssayResult] = useState<any>(null);
+    const [showHint, setShowHint] = useState(false);
+    const [hintData, setHintData] = useState<any>(null);
 
     const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
         try {
@@ -144,6 +146,25 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         );
     }
 
+    const handleGetHint = async () => {
+        setLoadingAI(true);
+        try {
+            const { jwt } = await account.createJWT();
+            const res = await axios.post('http://localhost:5000/api/feedback/hint', {
+                correct_answer: currentQuestion.answer,
+                question: currentQuestion.question
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            setHintData(res.data);
+            setShowHint(true);
+        } catch (error) {
+            console.error('Failed to get hint');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     return (
         <div className="max-w-3xl mx-auto">
             <div className="mb-8 flex items-center justify-between">
@@ -157,6 +178,15 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                         className="h-full bg-blue-600"
                     />
                 </div>
+                {!showExplanation && currentQuestion.type !== 'essay' && (
+                    <button 
+                        onClick={handleGetHint}
+                        className="text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 p-2 rounded-xl transition-all"
+                        title="Get AI Hint"
+                    >
+                        <Lightbulb className="h-5 w-5" />
+                    </button>
+                )}
             </div>
 
             <AnimatePresence mode="wait">
@@ -167,6 +197,35 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                     exit={{ opacity: 0, x: -20 }}
                     className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-800"
                 >
+                    {showHint && hintData && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-8 p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/20 rounded-2xl relative"
+                        >
+                            <button onClick={() => setShowHint(false)} className="absolute top-2 right-2 text-orange-400 hover:text-orange-600"><X className="h-4 w-4"/></button>
+                            <div className="flex items-center text-orange-700 dark:text-orange-400 font-bold text-xs mb-2">
+                                <Lightbulb className="h-4 w-4 mr-2" />
+                                AI CONCEPT HIHT
+                            </div>
+                            <p className="text-sm text-orange-800 dark:text-orange-300 font-medium mb-4">{hintData.hint}</p>
+                            <div className="flex flex-wrap gap-2">
+                                {hintData.resources?.map((res: any, i: number) => (
+                                    <a 
+                                        key={i} 
+                                        href={res.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center space-x-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-600 dark:text-gray-300 shadow-sm hover:shadow-md transition-all border border-orange-100 dark:border-orange-900/20"
+                                    >
+                                        <ExternalLink className="h-3 w-3" />
+                                        <span>{res.title}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 leading-relaxed">
                         {currentQuestion.question}
                     </h3>
