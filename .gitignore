@@ -20,6 +20,7 @@ backend/.env
 
 # Text files
 *.txt
+!requirements.txt
 
 # Logs
 npm-debug.log*
