@@ -84,29 +84,29 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-8 pb-10">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        Welcome back, {user?.name?.split(' ')[0] || 'Scholar'}! 👋
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                        Welcome, {user?.name?.split(' ')[0] || 'Scholar'}! 👋
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1 font-medium">
                         {stats?.streak > 0 
-                            ? `You're on a ${stats.streak}-day study streak. Keep it up!`
-                            : "Start your study journey today and build a streak!"}
+                            ? `On a ${stats.streak}-day study streak!`
+                            : "Start your study journey today!"}
                     </p>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <button className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
-                        View Reports
+                <div className="flex items-center space-x-2 md:space-x-3">
+                    <button className="flex-1 sm:flex-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
+                        Reports
                     </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
-                        Start Studying
-                        <ArrowUpRight className="ml-2 h-4 w-4" />
+                    <button className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+                        Study
+                        <ArrowUpRight className="ml-1 md:ml-2 h-3 md:h-4 w-3 md:w-4" />
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     icon={BookOpen}
                     label="Active Courses"
@@ -115,21 +115,21 @@ export default function DashboardPage() {
                 />
                 <StatCard
                     icon={Trophy}
-                    label="Learning Streak"
+                    label="Streak"
                     value={`${stats?.streak || 0} Days`}
-                    trend={stats?.streak > 0 ? "+1 today" : undefined}
+                    trend={stats?.streak > 0 ? "+1" : undefined}
                     color="bg-orange-500"
                 />
                 <StatCard
                     icon={Clock}
-                    label="Total Study Time"
+                    label="Study Time"
                     value="0h"
-                    trend="+0h this week"
+                    trend="+0h"
                     color="bg-purple-600"
                 />
                 <StatCard
                     icon={TrendingUp}
-                    label="Average Score"
+                    label="Avg Score"
                     value="0%"
                     color="bg-emerald-500"
                 />

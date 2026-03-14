@@ -237,6 +237,72 @@ async def get_hint(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/evaluate-essay")
+async def evaluate_essay(data: dict):
+    try:
+        question = data.get("question", "")
+        student_answer = data.get("student_answer", "")
+        context = data.get("context", "") # The study material text
+        
+        if not student_answer:
+            return {
+                "score": 0,
+                "feedback": "No answer provided.",
+                "relevance": "None",
+                "model_answer_highlights": "Please provide an answer for evaluation."
+            }
+
+        nlp = get_nlp()
+        if not nlp:
+            # Fallback simple evaluation
+            relevance = "Medium" if any(word in context.lower() for word in student_answer.lower().split() if len(word) > 5) else "Low"
+            return {
+                "score": 40 if relevance == "Medium" else 10,
+                "feedback": "Automated evaluation suggests your answer has " + relevance.lower() + " relevance to the material.",
+                "relevance": relevance,
+                "model_answer_highlights": "Review the core concepts in your study material related to the question."
+            }
+
+        # NLP based evaluation
+        q_doc = nlp(question)
+        a_doc = nlp(student_answer)
+        c_doc = nlp(context[:5000]) # Use first 5k chars for context to avoid overloading
+
+        # 1. Check for keyword overlap with context
+        context_keywords = {token.text.lower() for token in c_doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4}
+        answer_keywords = {token.text.lower() for token in a_doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4}
+        
+        matching_keywords = context_keywords.intersection(answer_keywords)
+        relevance_score = len(matching_keywords) / max(len(answer_keywords), 1)
+
+        # 2. Basic Feedback logic
+        if relevance_score > 0.4:
+            score = 85
+            feedback = "excellent! Your answer demonstrates a strong understanding of the material and uses appropriate terminology."
+        elif relevance_score > 0.15:
+            score = 60
+            feedback = "Good start, but you could include more specific details from the study material to strengthen your argument."
+        else:
+            score = 25
+            feedback = "Your answer doesn't seem to align well with the provided study material. Try to incorporate key terms and concepts from your notes."
+
+        # 3. Generate "Model Highlights" based on context keywords related to the question
+        question_keywords = [token.text.lower() for token in q_doc if token.pos_ in ('NOUN', 'PROPN')]
+        suggested_terms = [kw for kw in context_keywords if any(qk in kw or kw in qk for qk in question_keywords)][:5]
+        
+        if not suggested_terms:
+            suggested_terms = list(context_keywords)[:5]
+
+        return {
+            "score": score,
+            "feedback": feedback,
+            "relevance": "High" if relevance_score > 0.4 else "Medium" if relevance_score > 0.15 else "Low",
+            "matching_concepts": list(matching_keywords)[:10],
+            "model_answer_highlights": f"A complete answer should focus on: {', '.join(suggested_terms)}. Refer back to these specific terms in your material."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/ocr-evaluate")
 async def ocr_evaluate(file: UploadFile = File(...)):
     try:

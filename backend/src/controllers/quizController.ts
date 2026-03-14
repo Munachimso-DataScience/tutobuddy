@@ -57,9 +57,13 @@ export const generateQuiz = async (req: any, res: any) => {
             COLLECTION_QUIZZES,
             ID.unique(),
             {
+                title: `Quiz: ${material.title || 'Extracted material'}`,
+                course_id: material.course_id,
+                score: 0,
+                total_questions: quizData.questions?.length || 5,
+                date_taken: new Date().toISOString(),
                 user_id: userId,
                 material_id: materialId,
-                course_id: material.course_id,
                 content: typeof quizData === 'string' ? quizData : JSON.stringify(quizData),
                 created_at: new Date().toISOString()
             }
@@ -80,7 +84,13 @@ export const generateQuiz = async (req: any, res: any) => {
 
         res.status(201).json(quizDoc);
     } catch (error: any) {
-        console.error('Quiz generation error:', error.response?.data || error.message);
+        console.error('Quiz generation error details:');
+        if (error.response) {
+            console.error('Status:', error.response.status);
+            console.error('Data:', error.response.data);
+        } else {
+            console.error('Full Error:', error);
+        }
         res.status(500).json({ error: error.message });
     }
 };

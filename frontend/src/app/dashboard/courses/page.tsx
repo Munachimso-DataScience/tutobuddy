@@ -77,14 +77,14 @@ export default function CoursesPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Courses</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all your academic courses in one place.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage all your academic courses in one place.</p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
                 >
                     <Plus className="mr-2 h-5 w-5" />
                     New Course
@@ -95,8 +95,8 @@ export default function CoursesPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                     type="text"
-                    placeholder="Search by course name or code..."
-                    className="w-full pl-12 pr-4 py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 transition-all shadow-sm font-medium"
+                    placeholder="Search courses..."
+                    className="w-full pl-12 pr-4 py-3 md:py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 transition-all shadow-sm font-medium"
                 />
             </div>
 

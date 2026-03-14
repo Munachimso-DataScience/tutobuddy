@@ -66,12 +66,15 @@ const collections: Collection[] = [
         id: 'quizzes',
         name: 'Quizzes',
         attributes: [
-            { key: 'user_id', type: 'string', size: 255, required: true },
-            { key: 'material_id', type: 'string', size: 255, required: true },
-            { key: 'course_id', type: 'string', size: 255, required: false },
-            { key: 'content', type: 'string', size: 10000, required: true },
-            { key: 'created_at', type: 'string', size: 50, required: false },
-            { key: 'score', type: 'integer', required: false, default: 0 }
+            { key: 'title', type: 'string', size: 255, required: true },
+            { key: 'course_id', type: 'string', size: 255, required: true },
+            { key: 'score', type: 'integer', required: true, default: 0 },
+            { key: 'total_questions', type: 'integer', required: true, default: 0 },
+            { key: 'date_taken', type: 'string', size: 50, required: true },
+            { key: 'user_id', type: 'string', size: 255, required: false },
+            { key: 'material_id', type: 'string', size: 255, required: false },
+            { key: 'content', type: 'string', size: 50000, required: false },
+            { key: 'created_at', type: 'string', size: 50, required: false }
         ]
     },
     {
