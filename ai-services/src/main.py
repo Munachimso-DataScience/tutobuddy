@@ -4,7 +4,6 @@ import os
 from dotenv import load_dotenv
 import PyPDF2
 import io
-import spacy
 import random
 import nltk
 from nltk.corpus import wordnet
@@ -27,24 +26,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global NLP model
-_nlp = None
-
-def get_nlp():
-    global _nlp
-    if _nlp is not None:
-        return _nlp
-    
+# NLTK is used for all text processing as a lighter alternative to spaCy
+def get_keywords(text):
+    """Extracts keywords using NLTK POS tagging"""
     try:
-        # Avoid hanging on load - if this fails or hangs, we use fallbacks
-        import spacy
-        print("Loading Spacy model en_core_web_sm...")
-        _nlp = spacy.load("en_core_web_sm")
-        print("Spacy model loaded successfully.")
+        tokens = nltk.word_tokenize(text)
+        tagged = nltk.pos_tag(tokens)
+        # Extract Nouns and Proper Nouns
+        keywords = [word for word, pos in tagged if pos in ('NN', 'NNS', 'NNP', 'NNPS') and len(word) > 4 and word.isalnum()]
+        return keywords
     except Exception as e:
-        print(f"Warning: Spacy load failed ({e}). Using simple text fallback.")
-        _nlp = None
-    return _nlp
+        print(f"NLTK Keyword Error: {e}")
+        return text.lower().split()
 
 def get_simple_keywords(text):
     """Simple keyword extraction fallback when spacy is unavailable"""
@@ -121,21 +114,14 @@ async def generate_quiz(data: dict):
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
             
-        nlp = get_nlp()
-        if nlp:
-            doc = nlp(text)
-            # 1. Extract Keywords (Nouns/Proper Nouns)
-            keywords = [token.text for token in doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4]
-            keyword_freq = Counter(keywords).most_common(20)
-            top_keywords = [k[0] for k in keyword_freq]
-            
-            # 2. Extract Sentences containing top keywords
-            sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 30]
-        else:
-            # Simple fallback extraction
-            top_keywords = Counter(get_simple_keywords(text)).most_common(20)
-            top_keywords = [k[0] for k in top_keywords]
-            sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 30]
+        # Use NLTK for keyword and sentence extraction
+        keywords = get_keywords(text)
+        keyword_freq = Counter(keywords).most_common(20)
+        top_keywords = [k[0] for k in keyword_freq]
+        
+        # Sentence splitting using NLTK
+        sentences = nltk.sent_tokenize(text)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
         
         questions = []
         
@@ -296,25 +282,18 @@ async def evaluate_essay(data: dict):
                 "model_answer_highlights": "Please provide an answer for evaluation."
             }
 
-        nlp = get_nlp()
-        if not nlp:
-            # Fallback simple evaluation
-            relevance = "Medium" if any(word in context.lower() for word in student_answer.lower().split() if len(word) > 5) else "Low"
-            return {
-                "score": 40 if relevance == "Medium" else 10,
-                "feedback": "Automated evaluation suggests your answer has " + relevance.lower() + " relevance to the material.",
-                "relevance": relevance,
-                "model_answer_highlights": "Review the core concepts in your study material related to the question."
-            }
+        # NLTK based evaluation
+        tokens_q = nltk.word_tokenize(question.lower())
+        tokens_a = nltk.word_tokenize(student_answer.lower())
+        tokens_c = nltk.word_tokenize(context[:5000].lower())
 
-        # NLP based evaluation
-        q_doc = nlp(question)
-        a_doc = nlp(student_answer)
-        c_doc = nlp(context[:5000]) # Use first 5k chars for context to avoid overloading
+        # Extract keywords using NLTK for better relevance scoring
+        def extract_nouns(tokens):
+            tagged = nltk.pos_tag(tokens)
+            return {word for word, pos in tagged if pos.startswith('N') and len(word) > 4}
 
-        # 1. Check for keyword overlap with context
-        context_keywords = {token.text.lower() for token in c_doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4}
-        answer_keywords = {token.text.lower() for token in a_doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4}
+        context_keywords = extract_nouns(tokens_c)
+        answer_keywords = extract_nouns(tokens_a)
         
         matching_keywords = context_keywords.intersection(answer_keywords)
         relevance_score = len(matching_keywords) / max(len(answer_keywords), 1)
@@ -331,7 +310,7 @@ async def evaluate_essay(data: dict):
             feedback = "Your answer doesn't seem to align well with the provided study material. Try to incorporate key terms and concepts from your notes."
 
         # 3. Generate "Model Highlights" based on context keywords related to the question
-        question_keywords = [token.text.lower() for token in q_doc if token.pos_ in ('NOUN', 'PROPN')]
+        question_keywords = extract_nouns(tokens_q)
         suggested_terms = [kw for kw in context_keywords if any(qk in kw or kw in qk for qk in question_keywords)][:5]
         
         if not suggested_terms:
@@ -381,14 +360,7 @@ async def analyze_weakness(data: dict):
             
         all_text = " ".join([d.get("question", "") + " " + d.get("correct_answer", "") for d in incorrect_data])
         
-        keywords = []
-        nlp = get_nlp()
-        if nlp:
-            doc = nlp(all_text)
-            # Extract keywords from incorrect questions
-            keywords = [token.text.lower() for token in doc if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 4]
-        else:
-            keywords = get_simple_keywords(all_text)
+        keywords = get_keywords(all_text)
             
         common = Counter(keywords).most_common(3)
         
