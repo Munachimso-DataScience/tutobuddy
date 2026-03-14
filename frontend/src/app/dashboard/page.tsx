@@ -12,6 +12,7 @@ import {
     ArrowUpRight,
     Loader2
 } from 'lucide-react';
+import Link from 'next/link';
 
 import ReadinessChart from '@/components/dashboard/ReadinessChart';
 import StudyActivityChart from '@/components/dashboard/StudyActivityChart';
@@ -96,13 +97,17 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center space-x-2 md:space-x-3">
-                    <button className="flex-1 sm:flex-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
-                        Reports
-                    </button>
-                    <button className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
-                        Study
-                        <ArrowUpRight className="ml-1 md:ml-2 h-3 md:h-4 w-3 md:w-4" />
-                    </button>
+                    <Link href="/dashboard/reports" className="flex-1 sm:flex-none">
+                        <button className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
+                            Reports
+                        </button>
+                    </Link>
+                    <Link href="/dashboard/courses" className="flex-1 sm:flex-none">
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+                            Study
+                            <ArrowUpRight className="ml-1 md:ml-2 h-3 md:h-4 w-3 md:w-4" />
+                        </button>
+                    </Link>
                 </div>
             </div>
 

@@ -15,7 +15,8 @@ import {
     UserCircle,
     Menu,
     X,
-    ChevronLeft
+    ChevronLeft,
+    BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { icon: BookOpen, label: "My Courses", href: "/dashboard/courses" },
         { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
         { icon: History, label: "Tasks", href: "/dashboard/tasks" },
+        { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
     ];
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
