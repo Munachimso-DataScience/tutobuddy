@@ -17,7 +17,7 @@ services:
     env: node
     rootDir: backend
     plan: free
-    buildCommand: "npm install && npm run build"
+    buildCommand: "npm install --legacy-peer-deps && npm run build"
     startCommand: "npm start"
     envVars:
       - key: AI_SERVICE_URL
@@ -39,7 +39,7 @@ services:
     env: node
     rootDir: frontend
     plan: free
-    buildCommand: "npm install && npm run build"
+    buildCommand: "npm install --legacy-peer-deps && npm run build"
     startCommand: "npm start"
     envVars:
       - key: NEXT_PUBLIC_API_URL

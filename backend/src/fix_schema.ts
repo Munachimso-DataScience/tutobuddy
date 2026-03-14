@@ -106,13 +106,13 @@ async function fixSchema() {
             console.log(`  Adding attribute "${attr.key}" to "${col.id}"...`);
             try {
                 if (attr.type === 'string') {
-                    await databases.createStringAttribute(databaseId, col.id, attr.key, attr.size!, attr.required, attr.default as string);
+                    await databases.createStringAttribute(databaseId, col.id, attr.key, attr.size!, attr.required, attr.default as any);
                 } else if (attr.type === 'integer') {
-                    await databases.createIntegerAttribute(databaseId, col.id, attr.key, attr.required, 0, 1000000, attr.default as number);
+                    await databases.createIntegerAttribute(databaseId, col.id, attr.key, attr.required, 0, 1000000, attr.default as any);
                 } else if (attr.type === 'datetime') {
                     await databases.createDatetimeAttribute(databaseId, col.id, attr.key, attr.required);
                 } else if (attr.type === 'boolean') {
-                    await databases.createBooleanAttribute(databaseId, col.id, attr.key, attr.required, attr.default as boolean);
+                    await databases.createBooleanAttribute(databaseId, col.id, attr.key, attr.required, attr.default as any);
                 }
                 
                 // Wait a bit for Appwrite to process
