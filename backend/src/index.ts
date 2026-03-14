@@ -27,6 +27,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.status(200).send('<h1>TutorBuddy API</h1><p>The backend is running. Use the frontend to interact with the service.</p><a href="/health">Check Health Status</a>');
+});
+
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', message: 'Study Companion API is running' });
 });
