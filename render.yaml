@@ -5,7 +5,7 @@ services:
     env: python
     rootDir: ai-services
     plan: free # Changed from starter to avoid payment prompt
-    buildCommand: "pip install -r requirements.txt && pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz"
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn -w 4 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT"
     envVars:
       - key: PORT
