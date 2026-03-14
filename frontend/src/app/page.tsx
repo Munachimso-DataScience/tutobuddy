@@ -200,8 +200,8 @@ export default function Home() {
               </div>
 
               <div className="relative group">
-                <div className="absolute -inset-4 bg-blue-500/20 rounded-[2rem] blur-2xl group-hover:bg-blue-500/30 transition-all" />
-                <div className="bg-slate-800/80 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 relative">
+                <div className="absolute -inset-4 bg-blue-500/20 rounded-4xl blur-2xl group-hover:bg-blue-500/30 transition-all" />
+                <div className="bg-slate-800/80 backdrop-blur-xl rounded-4xl border border-white/10 p-6 relative">
                   {/* Mock Smart Resource Card */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
