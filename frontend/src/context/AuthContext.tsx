@@ -20,9 +20,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const checkUser = async () => {
         try {
+            console.log('Checking for active session...');
             const currentUser = await account.get();
+            console.log('Active session found for:', currentUser.email);
             setUser(currentUser);
-        } catch (error) {
+        } catch (error: any) {
+            console.log('No active session or error:', error.message);
             setUser(null);
         } finally {
             setLoading(false);
@@ -35,17 +38,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (email: string, pass: string) => {
         setLoading(true);
+        console.log('Attempting login for:', email);
         try {
             try {
                 await account.createEmailPasswordSession(email, pass);
+                console.log('Session created successfully');
             } catch (error: any) {
-                // If a session is already active, delete it first and try again
-                if (error.code === 401 || error.type === 'general_session_already_exists') {
+                // 409 means session already exists.
+                // Note: Appwrite SDK might return code 409 or a specific type.
+                if (error.code === 409 || error.type === 'user_session_already_exists') {
+                    console.log('Session already exists, clearing old session...');
                     try {
                         await account.deleteSession('current');
-                    } catch (e) {}
+                    } catch (e) {
+                        console.warn('Could not delete current session:', e);
+                    }
                     await account.createEmailPasswordSession(email, pass);
+                    console.log('Session created after clearing');
                 } else {
+                    console.error('Appwrite login error:', error.message, error.type, error.code);
                     throw error;
                 }
             }
@@ -59,6 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         try {
             await account.deleteSession('current');
+            console.log('Logged out');
+            setUser(null);
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Even if session delete fails, clear user state
             setUser(null);
         } finally {
             setLoading(false);

@@ -32,13 +32,20 @@ export default function CoursesPage() {
 
     const fetchCourses = async () => {
         try {
+            console.log('Fetching courses - Generating JWT...');
             const { jwt } = await account.createJWT();
+            console.log('JWT generated successfully (length:', jwt.length, ')');
+            
             const response = await axios.get('http://localhost:5000/api/courses', {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
+            console.log('Courses fetched:', response.data.length);
             setCourses(response.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching courses:', error);
+            if (error.response) {
+                console.error('API Error Response:', error.response.status, error.response.data);
+            }
         } finally {
             setLoading(false);
         }
