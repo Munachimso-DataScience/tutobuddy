@@ -27,11 +27,14 @@ export default function RegisterPage() {
             // 2. Login (Handle active sessions)
             try {
                 await account.createEmailPasswordSession(email, password);
+                console.log('Register: Session created');
             } catch (error: any) {
-                if (error.code === 401 || error.type === 'general_session_already_exists') {
+                if (error.code === 409 || error.type === 'user_session_already_exists') {
+                    console.log('Register: Session already exists, clearing...');
                     try { await account.deleteSession('current'); } catch (e) {}
                     await account.createEmailPasswordSession(email, password);
                 } else {
+                    console.error('Register: Session creation failed', error);
                     throw error;
                 }
             }
