@@ -9,6 +9,7 @@ import { createCourse, getCourses } from './controllers/courseController';
 import { uploadMaterial, getMaterials } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes } from './controllers/quizController';
+import { evaluateEssay } from './controllers/essayController';
 import { getExplanation, getHint } from './controllers/feedbackController';
 import { checkInactivity, generateWeeklyReports } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
@@ -44,6 +45,7 @@ app.get('/api/activity/stats', authMiddleware, getStats);
 
 // Quiz Routes
 app.post('/api/quizzes/generate', authMiddleware, generateQuiz);
+app.post('/api/quizzes/evaluate-essay', authMiddleware, evaluateEssay);
 app.get('/api/quizzes/:materialId', authMiddleware, getQuizzes);
 
 // Feedback Routes

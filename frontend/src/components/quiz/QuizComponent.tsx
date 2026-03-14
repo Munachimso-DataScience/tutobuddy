@@ -17,10 +17,11 @@ interface Question {
 
 interface QuizProps {
     questions: Question[];
+    materialId?: string;
     onComplete: (score: number) => void;
 }
 
-export default function QuizComponent({ questions, onComplete }: QuizProps) {
+export default function QuizComponent({ questions, materialId, onComplete }: QuizProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<any>({});
     const [showExplanation, setShowExplanation] = useState(false);
@@ -30,6 +31,7 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
 
     const [loadingAI, setLoadingAI] = useState(false);
     const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+    const [essayResult, setEssayResult] = useState<any>(null);
 
     const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
         try {
@@ -79,11 +81,40 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
         setShowExplanation(true);
     };
 
+    const handleEssaySubmit = async () => {
+        const answer = answers[currentIndex];
+        if (!answer) return;
+
+        setLoadingAI(true);
+        setAiFeedback(null);
+        setEssayResult(null);
+        setShowExplanation(true);
+
+        try {
+            const { jwt } = await account.createJWT();
+            const res = await axios.post('http://localhost:5000/api/quizzes/evaluate-essay', {
+                question: currentQuestion.question,
+                studentAnswer: answer,
+                materialId
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            
+            setEssayResult(res.data);
+            setAiFeedback(res.data.feedback);
+        } catch (error) {
+            console.error('Failed to evaluate essay');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     const nextQuestion = () => {
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(currentIndex + 1);
             setShowExplanation(false);
             setAiFeedback(null);
+            setEssayResult(null);
         } else {
             setIsFinished(true);
             // Calculate score for MCQs
@@ -169,6 +200,7 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
                         <div className="space-y-4">
                             <input 
                                 type="text"
+                                disabled={showExplanation}
                                 placeholder="Type your answer here..."
                                 className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 outline-none font-medium transition-all"
                                 onChange={(e) => setAnswers({ ...answers, [currentIndex]: e.target.value })}
@@ -188,16 +220,19 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
                         <div className="space-y-4">
                             <textarea 
                                 rows={6}
-                                placeholder="Explain your perspective..."
+                                disabled={showExplanation}
+                                placeholder="Write your essay here... AI will evaluate it based on your material."
                                 className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 outline-none font-medium transition-all"
                                 onChange={(e) => setAnswers({ ...answers, [currentIndex]: e.target.value })}
                             />
                             {!showExplanation && (
                                 <button 
-                                    onClick={() => setShowExplanation(true)}
-                                    className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm"
+                                    disabled={!answers[currentIndex] || loadingAI}
+                                    onClick={handleEssaySubmit}
+                                    className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center disabled:opacity-50"
                                 >
-                                    Submit Essay
+                                    {loadingAI ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                                    Submit Essay & Evaluate
                                 </button>
                             )}
                         </div>
@@ -211,19 +246,45 @@ export default function QuizComponent({ questions, onComplete }: QuizProps) {
                         >
                             <div className="flex items-center text-blue-800 dark:text-blue-400 font-bold mb-2">
                                 <HelpCircle className="h-4 w-4 mr-2" />
-                                {loadingAI ? 'AI is thinking...' : 'Explanation'}
+                                {loadingAI ? 'AI is grading your work...' : essayResult ? 'AI Evaluation & Feedback' : 'Explanation'}
                             </div>
                             
                             {loadingAI ? (
-                                <div className="flex items-center space-x-2 py-2">
-                                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce" />
-                                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                    <div className="h-1.5 w-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                <div className="flex items-center space-x-2 py-4">
+                                    <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" />
+                                    <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                    <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                    <span className="text-sm font-bold text-blue-400 ml-4">Comparing with course materials...</span>
                                 </div>
                             ) : (
-                                <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
-                                    {aiFeedback || currentQuestion.explanation || currentQuestion.rubric}
-                                </p>
+                                <div className="space-y-4">
+                                    {essayResult && (
+                                        <div className="flex items-center space-x-4 mb-4">
+                                            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm border border-blue-200 dark:border-blue-900">
+                                                <span className="text-xs font-bold text-gray-400 uppercase">Score</span>
+                                                <p className="text-xl font-black text-blue-600">{essayResult.score}%</p>
+                                            </div>
+                                            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm border border-blue-200 dark:border-blue-900">
+                                                <span className="text-xs font-bold text-gray-400 uppercase">Relevance</span>
+                                                <p className={`text-xl font-black ${essayResult.relevance === 'High' ? 'text-green-600' : essayResult.relevance === 'Medium' ? 'text-orange-500' : 'text-red-500'}`}>
+                                                    {essayResult.relevance}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                        {aiFeedback || currentQuestion.explanation || currentQuestion.rubric}
+                                    </p>
+                                    
+                                    {essayResult?.model_answer_highlights && (
+                                        <div className="pt-2">
+                                            <span className="text-xs font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-tighter">Model Answer Highlights</span>
+                                            <p className="text-xs text-blue-600/70 dark:text-blue-400/70 font-bold italic mt-1 leading-normal">
+                                                {essayResult.model_answer_highlights}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             <button 

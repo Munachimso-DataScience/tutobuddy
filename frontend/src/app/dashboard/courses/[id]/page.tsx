@@ -30,6 +30,7 @@ export default function CourseDetailsPage() {
     const [uploading, setUploading] = useState(false);
     const [isQuizOpen, setIsQuizOpen] = useState(false);
     const [currentQuiz, setCurrentQuiz] = useState<any>(null);
+    const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
     const router = useRouter();
@@ -66,6 +67,7 @@ export default function CourseDetailsPage() {
             
             const quizContent = JSON.parse(response.data.content);
             setCurrentQuiz(quizContent);
+            setCurrentMaterialId(materialId);
             setIsQuizOpen(true);
             toast.success('AI Quiz prepared successfully!');
         } catch (error: any) {
@@ -115,6 +117,7 @@ export default function CourseDetailsPage() {
                     </button>
                     <QuizComponent 
                         questions={currentQuiz.questions} 
+                        materialId={currentMaterialId || undefined}
                         onComplete={(score) => {
                             console.log('Quiz complete, score:', score);
                             // We can log this to the activity log as well
