@@ -48,7 +48,8 @@ const collections: Collection[] = [
             { key: 'student_id', type: 'string', size: 255, required: true },
             { key: 'progress', type: 'integer', required: false, default: 0 },
             { key: 'exam_readiness', type: 'integer', required: false, default: 0 },
-            { key: 'exam_date', type: 'string', size: 50, required: false }
+            { key: 'exam_date', type: 'string', size: 50, required: false },
+            { key: 'category', type: 'string', size: 100, required: false }
         ]
     },
     {
@@ -59,7 +60,9 @@ const collections: Collection[] = [
             { key: 'file_id', type: 'string', size: 255, required: true },
             { key: 'course_id', type: 'string', size: 255, required: true },
             { key: 'type', type: 'string', size: 50, required: true },
-            { key: 'uploaded_at', type: 'string', size: 50, required: false }
+            { key: 'uploaded_at', type: 'string', size: 50, required: false },
+            { key: 'content', type: 'string', size: 50000, required: false },
+            { key: 'category', type: 'string', size: 100, required: false }
         ]
     },
     {

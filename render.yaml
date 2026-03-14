@@ -21,10 +21,7 @@ services:
     startCommand: "npm start"
     envVars:
       - key: AI_SERVICE_URL
-        fromService:
-          name: tutobuddy-ai
-          type: web
-          property: url
+        sync: false # Set to the public URL of tutobuddy-ai after first deploy
       - key: APPWRITE_ENDPOINT
         sync: false # Set this in the Render Dashboard
       - key: APPWRITE_PROJECT_ID
@@ -46,10 +43,7 @@ services:
     startCommand: "npm start"
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: tutobuddy-backend
-          type: web
-          property: url
+        sync: false # Set to the public URL of tutobuddy-backend after first deploy
       - key: NEXT_PUBLIC_APPWRITE_ENDPOINT
         sync: false
       - key: NEXT_PUBLIC_APPWRITE_PROJECT_ID

@@ -12,7 +12,7 @@ const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 
 export const createCourse = async (req: any, res: any) => {
     try {
-        const { title, description, code, exam_date } = req.body;
+        const { title, description, code, exam_date, category } = req.body;
         const studentId = req.user.$id;
         const file = (req as any).file;
 
@@ -22,7 +22,8 @@ export const createCourse = async (req: any, res: any) => {
             code,
             student_id: studentId,
             progress: 0,
-            exam_readiness: 0
+            exam_readiness: 0,
+            category: category || 'General'
         };
 
         if (exam_date) {

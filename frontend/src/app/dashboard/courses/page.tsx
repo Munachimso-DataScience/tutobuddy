@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { account } from '@/lib/appwrite';
 import CourseCard from '@/components/courses/CourseCard';
-import { Plus, Search, Loader2, X, BookPlus } from 'lucide-react';
+import { Plus, Search, Loader2, X, BookPlus, FileText, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -18,8 +18,13 @@ export default function CoursesPage() {
     const [code, setCode] = useState('');
     const [description, setDescription] = useState('');
     const [examDate, setExamDate] = useState('');
+    const [category, setCategory] = useState('Science');
+    const [pastedContent, setPastedContent] = useState('');
+    const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const categories = ["Science", "Arts", "Engineering", "Medicine", "Business", "Law", "Others"];
 
     useEffect(() => {
         fetchCourses();
@@ -48,9 +53,13 @@ export default function CoursesPage() {
             formData.append('title', title);
             formData.append('code', code);
             formData.append('description', description);
+            formData.append('category', category);
             if (examDate) formData.append('exam_date', examDate);
-            if (file) {
+            
+            if (uploadMethod === 'file' && file) {
                 formData.append('file', file);
+            } else if (uploadMethod === 'text' && pastedContent) {
+                formData.append('content', pastedContent);
             }
 
             await axios.post('http://localhost:5000/api/courses', formData, {
@@ -173,33 +182,91 @@ export default function CoursesPage() {
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</label>
                                     <textarea
-                                        rows={3}
+                                        rows={2}
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
                                         placeholder="Briefly describe what this course covers..."
                                     />
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Exam Date (Optional)</label>
-                                    <input
-                                        type="date"
-                                        value={examDate}
-                                        onChange={(e) => setExamDate(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all text-gray-900 dark:text-white"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Initial Study Material (Optional)</label>
-                                    <div className="relative">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
+                                        <select
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all appearance-none"
+                                        >
+                                            {categories.map(cat => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Exam Date</label>
                                         <input
-                                            type="file"
-                                            onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                            accept=".pdf,.docx,.doc,.txt"
+                                            type="date"
+                                            value={examDate}
+                                            onChange={(e) => setExamDate(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
                                         />
                                     </div>
-                                    <p className="text-[10px] text-gray-400 mt-1">Supported formats: PDF, DOCX, TXT (Max 10MB)</p>
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Add Lecture Material</label>
+                                        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setUploadMethod('file')}
+                                                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${uploadMethod === 'file' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}
+                                            >
+                                                Upload File
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setUploadMethod('text')}
+                                                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${uploadMethod === 'text' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}
+                                            >
+                                                Paste Text
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {uploadMethod === 'file' ? (
+                                        <div className="relative border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl p-4 transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                            <input
+                                                type="file"
+                                                onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                accept=".pdf,.docx,.doc,.txt"
+                                            />
+                                            <div className="flex flex-col items-center justify-center space-y-2 py-2">
+                                                <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                                                    <Upload className="h-5 w-5 text-blue-600" />
+                                                </div>
+                                                <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                    {file ? file.name : "Choose a file or drag & drop"}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400">PDF, DOCX, TXT up to 10MB</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <textarea
+                                                rows={4}
+                                                value={pastedContent}
+                                                onChange={(e) => setPastedContent(e.target.value)}
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all text-sm"
+                                                placeholder="Paste your lecture notes or long-form content here..."
+                                            />
+                                            <div className="flex items-center text-[10px] text-orange-500 font-bold bg-orange-50 dark:bg-orange-900/20 p-2 rounded-lg">
+                                                <FileText className="h-3 w-3 mr-2" />
+                                                The AI will analyze this text to generate your first quiz.
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="pt-4">
                                     <button

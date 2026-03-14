@@ -32,6 +32,12 @@ export default function CourseDetailsPage() {
     const [currentQuiz, setCurrentQuiz] = useState<any>(null);
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
+    const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
+    const [pastedContent, setPastedContent] = useState('');
+    const [pastedTitle, setPastedTitle] = useState('');
+    const [category, setCategory] = useState('Science');
+
+    const categories = ["Science", "Arts", "Engineering", "Medicine", "Business", "Law", "Others"];
 
     const router = useRouter();
 
@@ -99,6 +105,34 @@ export default function CourseDetailsPage() {
             fetchMaterials();
         } catch (error: any) {
             toast.error(error.response?.data?.error || 'Failed to upload document');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleTextSubmit = async () => {
+        if (!pastedContent || !pastedTitle) {
+            toast.warning('Please provide both a title and some content');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const { jwt } = await account.createJWT();
+            await axios.post('http://localhost:5000/api/materials/upload', {
+                courseId,
+                title: pastedTitle,
+                content: pastedContent,
+                category
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            toast.success('Notes saved and processed!');
+            setPastedContent('');
+            setPastedTitle('');
+            fetchMaterials();
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Failed to save notes');
         } finally {
             setUploading(false);
         }
@@ -198,35 +232,88 @@ export default function CourseDetailsPage() {
                     </div>
                 </div>
 
-                {/* Upload Zone */}
                 <div className="space-y-6">
-                    <div className="bg-blue-600 rounded-2xl p-6 shadow-xl shadow-blue-500/20 text-white">
-                        <h3 className="text-lg font-bold mb-2">Upload Material</h3>
-                        <p className="text-blue-100 text-xs mb-6 font-medium leading-relaxed">
-                            Upload your lecture notes, PDFs, or research papers. Our AI will analyze them to generate personalized quizzes and summaries.
-                        </p>
+                    <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold">Add Material</h3>
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setUploadMethod('file')}
+                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${uploadMethod === 'file' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}
+                                >
+                                    File
+                                </button>
+                                <button 
+                                    onClick={() => setUploadMethod('text')}
+                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${uploadMethod === 'text' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}
+                                >
+                                    Text
+                                </button>
+                            </div>
+                        </div>
 
-                        <label className={`
-                            flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-8 cursor-pointer transition-all
-                            hover:bg-blue-500/50 hover:border-white
-                            ${uploading ? 'pointer-events-none opacity-50' : ''}
-                        `}>
-                            {uploading ? (
-                                <Loader2 className="h-8 w-8 animate-spin" />
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Topic Category</label>
+                                <select 
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-sm font-medium px-4 py-2.5 focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {categories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {uploadMethod === 'file' ? (
+                                <label className={`
+                                    flex flex-col items-center justify-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl p-8 cursor-pointer transition-all
+                                    hover:bg-gray-50 dark:hover:bg-gray-800/50
+                                    ${uploading ? 'pointer-events-none opacity-50' : ''}
+                                `}>
+                                    {uploading ? (
+                                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                    ) : (
+                                        <>
+                                            <Upload className="h-8 w-8 mb-4 stroke-[1.5] text-blue-600" />
+                                            <span className="text-sm font-bold text-gray-600">Drop PDF or browse</span>
+                                            <span className="text-[10px] mt-2 text-gray-400 font-bold uppercase tracking-widest">Max 10MB</span>
+                                        </>
+                                    )}
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".pdf,.docx,.txt"
+                                        onChange={handleFileUpload}
+                                    />
+                                </label>
                             ) : (
-                                <>
-                                    <Upload className="h-8 w-8 mb-4 stroke-[1.5]" />
-                                    <span className="text-sm font-bold">Drop PDF or click to browse</span>
-                                    <span className="text-[10px] mt-2 text-blue-200 uppercase tracking-widest font-bold">Max size 10MB</span>
-                                </>
+                                <div className="space-y-4">
+                                    <input 
+                                        type="text"
+                                        placeholder="Note Title (e.g. Week 1 Lecture)"
+                                        value={pastedTitle}
+                                        onChange={(e) => setPastedTitle(e.target.value)}
+                                        className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-sm font-medium px-4 py-2.5"
+                                    />
+                                    <textarea 
+                                        rows={5}
+                                        placeholder="Paste your lecture notes here..."
+                                        value={pastedContent}
+                                        onChange={(e) => setPastedContent(e.target.value)}
+                                        className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-sm font-medium px-4 py-2.5"
+                                    />
+                                    <button 
+                                        onClick={handleTextSubmit}
+                                        disabled={uploading}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center shadow-lg shadow-blue-500/20"
+                                    >
+                                        {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Notes"}
+                                    </button>
+                                </div>
                             )}
-                            <input
-                                type="file"
-                                className="hidden"
-                                accept=".pdf,.docx,.txt"
-                                onChange={handleFileUpload}
-                            />
-                        </label>
+                        </div>
                     </div>
 
                     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">

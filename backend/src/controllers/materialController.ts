@@ -10,36 +10,41 @@ const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 
 export const uploadMaterial = async (req: any, res: any) => {
     try {
-        const { courseId, title } = req.body;
-        const file = (req as any).file; // Assuming multer or similar is used for temp file handling
+        const { courseId, title, content, category } = req.body;
+        const file = (req as any).file;
 
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        let materialData: any = {
+            course_id: courseId,
+            title: title || (file ? file.originalname : 'Pasted Note'),
+            category: category || 'General',
+            uploaded_at: new Date().toISOString(),
+            type: file ? (path.extname(file.originalname).substring(1) || 'unknown') : 'note'
+        };
+
+        if (file) {
+            // Upload to Appwrite Storage
+            const appwriteFile = await storage.createFile(
+                BUCKET_ID,
+                ID.unique(),
+                InputFile.fromPath(file.path, file.originalname)
+            );
+            materialData.file_id = appwriteFile.$id;
+            fs.unlinkSync(file.path); // Remove temp file
+        } else if (content) {
+            // If it's pasted text, we store it in content and use a dummy file_id
+            materialData.content = content;
+            materialData.file_id = 'pasted_text';
+        } else {
+            return res.status(400).json({ error: 'No file or text content provided' });
         }
 
-        // 1. Upload to Appwrite Storage
-        const appwriteFile = await storage.createFile(
-            BUCKET_ID,
-            ID.unique(),
-            InputFile.fromPath(file.path, file.originalname)
-        );
-
-        // 2. Save Metadata to Database
+        // Save Metadata to Database
         const material = await databases.createDocument(
             DATABASE_ID,
             COLLECTION_MATERIALS,
             ID.unique(),
-            {
-                course_id: courseId,
-                file_id: appwriteFile.$id,
-                title: title || file.originalname,
-                type: path.extname(file.originalname).substring(1) || 'unknown',
-                uploaded_at: new Date().toISOString()
-            }
+            materialData
         );
-
-        // Remove temp file
-        fs.unlinkSync(file.path);
 
         res.status(201).json(material);
     } catch (error: any) {

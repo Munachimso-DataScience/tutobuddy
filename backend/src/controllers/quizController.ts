@@ -15,33 +15,43 @@ export const generateQuiz = async (req: any, res: any) => {
         const userId = req.user.$id;
 
         // 1. Get material file from database to get file_id and course_id
-        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);        // 2. Get file content from storage (ArrayBuffer)
-        const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
+        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);
         
-        // 3. Prepare for AI service
-        const formData = new (require('form-data'))();
-        // fileContent is an ArrayBuffer from node-appwrite, convert it directly to Buffer
-        const buffer = Buffer.from(fileContent);
+        let text = '';
 
-        formData.append('file', buffer, {
-            filename: `material.${material.type || 'txt'}`,
-            contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
-        });
+        if (material.content) {
+            // Use pasted text directly
+            text = material.content;
+        } else if (material.file_id && material.file_id !== 'pasted_text') {
+            // 2. Get file content from storage (ArrayBuffer)
+            const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
+            
+            // 3. Prepare for AI service
+            const formData = new (require('form-data'))();
+            const buffer = Buffer.from(fileContent);
 
-        // 4. Extract text (using AI service with fetch to avoid Axios buffer issues)
-        const extractionRes = await fetch(`${AI_SERVICE_URL}/extract-text`, {
-            method: 'POST',
-            body: formData as any,
-            headers: formData.getHeaders()
-        });
+            formData.append('file', buffer, {
+                filename: `material.${material.type || 'txt'}`,
+                contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
+            });
 
-        if (!extractionRes.ok) {
-            const errText = await extractionRes.text();
-            throw new Error(`AI Extraction failed: ${errText}`);
+            // 4. Extract text (using AI service with fetch)
+            const extractionRes = await fetch(`${AI_SERVICE_URL}/extract-text`, {
+                method: 'POST',
+                body: formData as any,
+                headers: formData.getHeaders()
+            });
+
+            if (!extractionRes.ok) {
+                const errText = await extractionRes.text();
+                throw new Error(`AI Extraction failed: ${errText}`);
+            }
+
+            const extractionData: any = await extractionRes.json();
+            text = extractionData.text;
+        } else {
+            throw new Error('No content or file found for this material');
         }
-
-        const extractionData: any = await extractionRes.json();
-        const text = extractionData.text;
 
         // 5. Generate Quiz
         const quizRes = await axios.post(`${AI_SERVICE_URL}/generate-quiz`, {
