@@ -94,3 +94,58 @@ export const getCourses = async (req: any, res: any) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const deleteCourse = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const studentId = req.user.$id;
+
+        // 1. Verify ownership
+        const course = await databases.getDocument(DATABASE_ID, COLLECTION_COURSES, id);
+        if (course.student_id !== studentId) {
+            return res.status(403).json({ error: 'Unauthorized to delete this course' });
+        }
+
+        // 2. Cleanup associated materials and storage files
+        const materials = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTION_MATERIALS,
+            [Query.equal('course_id', id)]
+        );
+
+        for (const material of materials.documents) {
+            try {
+                // Delete file from storage
+                await storage.deleteFile(BUCKET_ID, material.file_id);
+                // Delete material record
+                await databases.deleteDocument(DATABASE_ID, COLLECTION_MATERIALS, material.$id);
+            } catch (err) {
+                console.warn(`Could not full cleanup material ${material.$id}:`, err);
+            }
+        }
+
+        // 3. Cleanup associated quizzes
+        const quizzes = await databases.listDocuments(
+            DATABASE_ID,
+            'quizzes',
+            [Query.equal('course_id', id)]
+        );
+
+        for (const quiz of quizzes.documents) {
+            try {
+                await databases.deleteDocument(DATABASE_ID, 'quizzes', quiz.$id);
+            } catch (err) {
+                console.warn(`Could not cleanup quiz ${quiz.$id}:`, err);
+            }
+        }
+
+        // 4. Finally delete the course
+        await databases.deleteDocument(DATABASE_ID, COLLECTION_COURSES, id);
+
+        res.status(200).json({ message: 'Course and all related data deleted successfully' });
+    } catch (error: any) {
+        console.error('Delete Course Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};
+

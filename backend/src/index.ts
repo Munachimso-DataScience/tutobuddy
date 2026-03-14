@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
-import { createCourse, getCourses } from './controllers/courseController';
+import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
 import { uploadMaterial, getMaterials } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes } from './controllers/quizController';
@@ -34,6 +34,7 @@ app.get('/health', (req, res) => {
 // Protected Course Routes
 app.post('/api/courses', authMiddleware, upload.single('file'), createCourse);
 app.get('/api/courses', authMiddleware, getCourses);
+app.delete('/api/courses/:id', authMiddleware, deleteCourse);
 
 // Material Routes
 app.post('/api/materials/upload', authMiddleware, upload.single('file'), uploadMaterial);
