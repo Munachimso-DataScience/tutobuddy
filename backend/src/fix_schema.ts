@@ -34,6 +34,9 @@ const schema = [
             { key: 'code', type: 'string', size: 50, required: false },
             { key: 'student_id', type: 'string', size: 255, required: false },
             { key: 'progress', type: 'integer', required: false, default: 0 },
+            { key: 'exam_readiness', type: 'integer', required: false, default: 0 },
+            { key: 'category', type: 'string', size: 255, required: false, default: 'General' },
+            { key: 'exam_date', type: 'datetime', required: false },
             { key: 'created_at', type: 'datetime', required: false }
         ]
     },
@@ -45,6 +48,8 @@ const schema = [
             { key: 'file_id', type: 'string', size: 255, required: false },
             { key: 'course_id', type: 'string', size: 255, required: false },
             { key: 'type', type: 'string', size: 50, required: false },
+            { key: 'content', type: 'string', size: 15000, required: false },
+            { key: 'category', type: 'string', size: 255, required: false, default: 'General' },
             { key: 'processed', type: 'boolean', required: false, default: false },
             { key: 'created_at', type: 'datetime', required: false }
         ]
@@ -55,9 +60,12 @@ const schema = [
         attributes: [
             { key: 'user_id', type: 'string', size: 255, required: false },
             { key: 'material_id', type: 'string', size: 255, required: false },
+            { key: 'course_id', type: 'string', size: 255, required: false },
+            { key: 'title', type: 'string', size: 255, required: false },
             { key: 'content', type: 'string', size: 15000, required: false },
-            { key: 'score', type: 'integer', required: false },
-            { key: 'total_questions', type: 'integer', required: false },
+            { key: 'score', type: 'integer', required: false, default: 0 },
+            { key: 'total_questions', type: 'integer', required: false, default: 0 },
+            { key: 'date_taken', type: 'datetime', required: false },
             { key: 'created_at', type: 'datetime', required: false }
         ]
     },
@@ -75,10 +83,22 @@ const schema = [
         id: COLLECTIONS.TASKS,
         name: 'Tasks',
         attributes: [
-            { key: 'user_id', type: 'string', size: 255, required: true },
-            { key: 'title', type: 'string', size: 255, required: true },
+            { key: 'user_id', type: 'string', size: 255, required: false },
+            { key: 'title', type: 'string', size: 255, required: false },
             { key: 'status', type: 'string', size: 50, required: false, default: 'pending' },
+            { key: 'priority', type: 'string', size: 50, required: false, default: 'medium' },
             { key: 'due_date', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.SCHEDULES,
+        name: 'Schedules',
+        attributes: [
+            { key: 'user_id', type: 'string', size: 255, required: false },
+            { key: 'title', type: 'string', size: 255, required: false },
+            { key: 'day', type: 'string', size: 20, required: false },
+            { key: 'start_time', type: 'string', size: 20, required: false },
+            { key: 'end_time', type: 'string', size: 20, required: false }
         ]
     }
 ];

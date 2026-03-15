@@ -13,12 +13,13 @@ export const createCourse = async (req: any, res: any) => {
 
         // 1. Create Course
         const courseData: any = {
-            name: title,
+            title: title,
             code,
             student_id: studentId,
             progress: 0,
             exam_readiness: 0,
-            category: category || 'General'
+            category: category || 'General',
+            created_at: new Date().toISOString()
         };
 
         if (exam_date) {

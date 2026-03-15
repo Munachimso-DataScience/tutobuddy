@@ -48,15 +48,15 @@ export default function Home() {
               TutorBuddy
             </span>
           </div>
-          <div className="flex items-center gap-4 md:gap-8">
+          <div className="flex items-center gap-6 md:gap-10">
             <Link href="/login" className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors">
               Log in
             </Link>
             <Link
               href="/register"
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
             >
-              Start Learning
+              Get Started
             </Link>
           </div>
         </div>

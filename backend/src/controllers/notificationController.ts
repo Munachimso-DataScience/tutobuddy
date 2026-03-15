@@ -1,10 +1,8 @@
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import { users, databases } from '../lib/appwrite-admin';
-import { ID, Query } from 'node-appwrite';
-
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const COLLECTION_ACTIVITY = 'activity_logs';
+import { Query } from 'node-appwrite';
+import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.mailtrap.io',
@@ -49,9 +47,9 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
             // Aggregate activity for the week
             const activity = await databases.listDocuments(
                 DATABASE_ID,
-                COLLECTION_ACTIVITY,
+                COLLECTIONS.ACTIVITY,
                 [
-                    Query.equal('student_id', user.$id),
+                    Query.equal('user_id', user.$id),
                     Query.greaterThan('timestamp', oneWeekAgo)
                 ]
             );

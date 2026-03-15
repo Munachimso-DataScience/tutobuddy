@@ -42,7 +42,14 @@ npm run install-all
 ```
 *Note: This installs Node.js dependencies for the root, backend, and frontend.*
 
-### 3. Set up the AI Service (Python)
+### 3. Set up the Database (Appwrite)
+1. Fill in your `.env` file in the `backend` folder with your Appwrite project details.
+2. Initialize the database collections and attributes:
+```bash
+npm run setup-db
+```
+
+### 4. Set up the AI Service (Python)
 Navigate to the `ai-services` directory and set up a virtual environment:
 ```bash
 cd ai-services

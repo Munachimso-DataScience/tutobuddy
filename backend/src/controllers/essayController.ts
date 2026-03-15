@@ -1,7 +1,7 @@
+import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import axios from 'axios';
 
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 export const evaluateEssay = async (req: any, res: any) => {
@@ -9,7 +9,7 @@ export const evaluateEssay = async (req: any, res: any) => {
         const { question, studentAnswer, materialId } = req.body;
         
         // 1. Get material text context
-        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
         
         // Note: In a real scenario, we'd fetch the full extracted text from a storage file or a dedicated field.
         // For now, we'll try to extract the text again or use a placeholder if the text wasn't stored.

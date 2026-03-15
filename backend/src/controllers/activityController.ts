@@ -14,7 +14,7 @@ export const logActivity = async (req: any, res: any) => {
             {
                 user_id: userId,
                 type,
-                description: JSON.stringify(details),
+                details: JSON.stringify(details),
                 timestamp: new Date().toISOString()
             }
         );
