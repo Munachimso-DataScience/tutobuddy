@@ -75,6 +75,7 @@ const schema = [
         attributes: [
             { key: 'user_id', type: 'string', size: 255, required: false },
             { key: 'type', type: 'string', size: 50, required: false },
+            { key: 'description', type: 'string', size: 255, required: false },
             { key: 'details', type: 'string', size: 5000, required: false },
             { key: 'timestamp', type: 'datetime', required: false }
         ]

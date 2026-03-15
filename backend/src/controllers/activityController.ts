@@ -30,7 +30,8 @@ export const logActivity = async (req: any, res: any) => {
             ID.unique(),
             {
                 user_id: userId,
-                type,
+                type: type || 'activity',
+                description: type || 'User activity session',
                 details: logDetails,
                 timestamp: new Date().toISOString()
             }

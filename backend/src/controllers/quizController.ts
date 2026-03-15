@@ -82,6 +82,7 @@ export const generateQuiz = async (req: any, res: any) => {
         }
 
         // 6. Store in Appwrite
+        console.log(`Saving quiz to collection: ${COLLECTIONS.QUIZZES}...`);
         const quizDoc = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.QUIZZES,
@@ -97,7 +98,10 @@ export const generateQuiz = async (req: any, res: any) => {
                 content: typeof quizData === 'string' ? quizData : JSON.stringify(quizData),
                 created_at: new Date().toISOString()
             }
-        );
+        ).catch(dbErr => {
+            console.error('Appwrite Quiz Save Failure:', dbErr.message);
+            throw new Error(`Database rejected the quiz: ${dbErr.message}`);
+        });
 
         // 7. Update course completion tracking
         try {
