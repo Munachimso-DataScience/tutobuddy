@@ -28,8 +28,6 @@ export const authMiddleware = async (req: any, res: any, next: any) => {
         req.user = user;
         next();
     } catch (error: any) {
-        const logMsg = `${new Date().toISOString()} - Auth Error: ${error.message}\n`;
-        require('fs').appendFileSync('auth_logs.txt', logMsg);
         console.error('Auth Middleware Error:', error.message);
         res.status(401).json({ error: 'Unauthorized: Invalid session or token', details: error.message });
     }

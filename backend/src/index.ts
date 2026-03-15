@@ -76,6 +76,16 @@ app.get('/api/schedules', authMiddleware, getSchedules);
 app.post('/api/schedules', authMiddleware, createSchedule);
 app.delete('/api/schedules/:scheduleId', authMiddleware, deleteSchedule);
 
+// Global Error Handler
+app.use((err: any, req: any, res: any, next: any) => {
+    console.error('GLOBAL SERVER ERROR:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+});
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });

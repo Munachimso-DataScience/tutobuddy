@@ -7,6 +7,14 @@ export const logActivity = async (req: any, res: any) => {
         const { type, details } = req.body;
         const userId = req.user.$id;
 
+        console.log(`Logging activity: ${type} for user: ${userId}`);
+        
+        // Truncate details if they are too long for the 5000 character limit in DB
+        let logDetails = JSON.stringify(details);
+        if (logDetails.length > 4900) {
+            logDetails = logDetails.substring(0, 4900) + '... (truncated)';
+        }
+
         const log = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.ACTIVITY,
@@ -14,21 +22,23 @@ export const logActivity = async (req: any, res: any) => {
             {
                 user_id: userId,
                 type,
-                details: JSON.stringify(details),
+                details: logDetails,
                 timestamp: new Date().toISOString()
             }
         );
 
+        console.log(`Activity logged with ID: ${log.$id}`);
+
         // Update last_active and check streak
         try {
             const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
-            const lastActive = new Date(profile.last_active);
+            const lastActive = profile.last_active ? new Date(profile.last_active) : new Date(0);
             const today = new Date();
 
             const diffTime = Math.abs(today.getTime() - lastActive.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            let newStreak = profile.current_streak;
+            let newStreak = profile.current_streak || 0;
             if (diffDays === 1) {
                 newStreak += 1;
             } else if (diffDays > 1) {
@@ -39,12 +49,14 @@ export const logActivity = async (req: any, res: any) => {
                 last_active: today.toISOString(),
                 current_streak: newStreak
             });
-        } catch (profileError) {
-            console.warn(`Could not update profile for user ${userId}:`, profileError);
+            console.log(`Streak updated to ${newStreak} for user ${userId}`);
+        } catch (profileError: any) {
+            console.warn(`Non-critical: Could not update profile for user ${userId}:`, profileError.message);
         }
 
         res.status(201).json({ log, streak: 0 });
     } catch (error: any) {
+        console.error('CRITICAL Activity Log Error:', error);
         res.status(500).json({ error: error.message });
     }
 };
