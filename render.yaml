@@ -6,7 +6,7 @@ services:
     rootDir: ai-services
     plan: free # Changed from starter to avoid payment prompt
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python -m nltk.downloader -d /opt/render/nltk_data wordnet omw-1.4 punkt averaged_perceptron_tagger stopwords"
-    startCommand: "gunicorn -w 2 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT"
+    startCommand: "gunicorn -w 1 --timeout 120 -k uvicorn.workers.UvicornWorker src.main:app --bind 0.0.0.0:$PORT"
     envVars:
       - key: PORT
         value: 8000

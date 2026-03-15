@@ -19,8 +19,14 @@ def download_nltk():
     if not os.path.exists(data_path):
         os.makedirs(data_path, exist_ok=True)
     nltk.data.path.append(data_path)
-    for lib in libs:
-        nltk.download(lib, download_dir=data_path, quiet=True)
+    
+    # Only download if a key directory doesn't exist to speed up startup
+    if not os.path.exists(os.path.join(data_path, "corpora", "wordnet")):
+        print("NLTK data missing. Downloading...")
+        for lib in libs:
+            nltk.download(lib, download_dir=data_path, quiet=True)
+    else:
+        print("NLTK data already present.")
 
 download_nltk()
 
