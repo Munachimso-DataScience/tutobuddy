@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import CourseCard from '@/components/courses/CourseCard';
 import { Plus, Search, Loader2, X, BookPlus, FileText, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,18 +35,15 @@ export default function CoursesPage() {
         try {
             console.log('Fetching courses - Generating JWT...');
             const { jwt } = await account.createJWT();
-            console.log('JWT generated successfully (length:', jwt.length, ')');
+            console.log('JWT generated successfully');
             
-            const response = await axios.get('http://localhost:5000/api/courses', {
+            const response = await axios.get(`${API_URL}/api/courses`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             console.log('Courses fetched:', response.data.length);
             setCourses(response.data);
         } catch (error: any) {
             console.error('Error fetching courses:', error);
-            if (error.response) {
-                console.error('API Error Response:', error.response.status, error.response.data);
-            }
         } finally {
             setLoading(false);
         }
@@ -69,7 +67,7 @@ export default function CoursesPage() {
                 formData.append('content', pastedContent);
             }
 
-            await axios.post('http://localhost:5000/api/courses', formData, {
+            await axios.post(`${API_URL}/api/courses`, formData, {
                 headers: { 
                     Authorization: `Bearer ${jwt}`,
                     'Content-Type': 'multipart/form-data'
@@ -84,6 +82,7 @@ export default function CoursesPage() {
             setDescription('');
             setExamDate('');
             setFile(null);
+            setPastedContent('');
         } catch (error: any) {
             toast.error(error.response?.data?.error || 'Failed to add course');
         } finally {

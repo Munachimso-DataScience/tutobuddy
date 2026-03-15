@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import axios from 'axios';
-
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 
 export const useStudyHeartbeat = (courseId: string) => {
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -14,7 +14,7 @@ export const useStudyHeartbeat = (courseId: string) => {
         const logSession = async () => {
             try {
                 const { jwt } = await account.createJWT();
-                await axios.post('http://localhost:5000/api/activity/log', {
+                await axios.post(`${API_URL}/api/activity/log`, {
                     type: 'study_session',
                     details: { courseId, duration: 5 } // Log in 5-minute increments
                 }, {

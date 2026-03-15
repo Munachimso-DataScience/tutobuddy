@@ -50,13 +50,13 @@ export default function Home() {
               TutorBuddy
             </span>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm font-semibold hover:text-indigo-600 transition-colors">
+          <div className="flex items-center gap-4 md:gap-8">
+            <Link href="/login" className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors">
               Log in
             </Link>
             <Link
               href="/register"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
             >
               Start Learning
             </Link>
@@ -77,23 +77,23 @@ export default function Home() {
             <Sparkles className="w-3.5 h-3.5" />
             Study Companion
           </motion.div>
-          <motion.h1 variants={itemVariants} className="text-6xl md:text-7xl font-black mb-6 tracking-tight">
+          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
             Study <span className="text-indigo-600"> Smarter</span>,<br />Learn Deeper.
           </motion.h1>
-          <motion.p variants={itemVariants} className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-            Your intelligent study companion that generates personalized quizzes, tracks your progress, and adapts to how you learn — built for Nigerian university students. TutorBuddy is your personal growth partner.
+          <motion.p variants={itemVariants} className="text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+            Your intelligent study companion that generates personalized quizzes, tracks your progress, and adapts to how you learn — built for Nigerian university students.
           </motion.p>
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-2xl shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all hover:scale-105"
+              className="w-full sm:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-2xl shadow-indigo-500/30 flex items-center justify-center gap-2 transition-all hover:scale-105"
             >
               Get Started for Free
               <ChevronRight className="w-5 h-5" />
             </Link>
             <Link
               href="/login"
-              className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold transition-all"
+              className="w-full sm:w-auto px-10 py-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold transition-all"
             >
               View Demo
             </Link>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import {
     TrendingUp,
@@ -52,10 +53,10 @@ export default function DashboardPage() {
                 
                 // Fetch stats and courses in parallel
                 const [statsRes, coursesRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/activity/stats', {
+                    axios.get(`${API_URL}/api/activity/stats`, {
                         headers: { Authorization: `Bearer ${jwt}` }
                     }),
-                    axios.get('http://localhost:5000/api/courses', {
+                    axios.get(`${API_URL}/api/courses`, {
                         headers: { Authorization: `Bearer ${jwt}` }
                     })
                 ]);
@@ -96,16 +97,16 @@ export default function DashboardPage() {
                             : "Start your study journey today!"}
                     </p>
                 </div>
-                <div className="flex items-center space-x-2 md:space-x-3">
+                <div className="flex items-center space-x-2 md:space-x-4">
                     <Link href="/dashboard/reports" className="flex-1 sm:flex-none">
-                        <button className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
+                        <button className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
                             Reports
                         </button>
                     </Link>
                     <Link href="/dashboard/courses" className="flex-1 sm:flex-none">
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
                             Study
-                            <ArrowUpRight className="ml-1 md:ml-2 h-3 md:h-4 w-3 md:w-4" />
+                            <ArrowUpRight className="ml-2 h-4 w-4" />
                         </button>
                     </Link>
                 </div>

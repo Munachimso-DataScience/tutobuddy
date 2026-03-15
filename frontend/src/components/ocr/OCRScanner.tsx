@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Camera, Upload, Loader2, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { API_URL } from '@/lib/api';
 import { toast } from 'react-toastify';
 
 export default function OCRScanner() {

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X } from 'lucide-react';
 import axios from 'axios';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 
 interface Question {
     type: 'mcq' | 'short' | 'essay';
@@ -38,7 +39,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
     const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/activity/log', {
+            await axios.post(`${API_URL}/api/activity/log`, {
                 type: isCorrect ? 'quiz_correct' : 'quiz_incorrect',
                 details: {
                     question_id: currentIndex,
@@ -65,7 +66,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
             setLoadingAI(true);
             try {
                 const { jwt } = await account.createJWT();
-                const res = await axios.post('http://localhost:5000/api/feedback/explain', {
+                const res = await axios.post(`${API_URL}/api/feedback/explain`, {
                     question: currentQuestion.question,
                     userAnswer: answer,
                     correctAnswer: currentQuestion.answer,
@@ -94,7 +95,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
 
         try {
             const { jwt } = await account.createJWT();
-            const res = await axios.post('http://localhost:5000/api/quizzes/evaluate-essay', {
+            const res = await axios.post(`${API_URL}/api/quizzes/evaluate-essay`, {
                 question: currentQuestion.question,
                 studentAnswer: answer,
                 materialId
@@ -128,6 +129,25 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         }
     };
 
+    const handleGetHint = async () => {
+        setLoadingAI(true);
+        try {
+            const { jwt } = await account.createJWT();
+            const res = await axios.post(`${API_URL}/api/feedback/hint`, {
+                correct_answer: currentQuestion.answer,
+                question: currentQuestion.question
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            setHintData(res.data);
+            setShowHint(true);
+        } catch (error) {
+            console.error('Failed to get hint');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     if (isFinished) {
         return (
             <div className="text-center p-8 bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800">
@@ -145,25 +165,6 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
             </div>
         );
     }
-
-    const handleGetHint = async () => {
-        setLoadingAI(true);
-        try {
-            const { jwt } = await account.createJWT();
-            const res = await axios.post('http://localhost:5000/api/feedback/hint', {
-                correct_answer: currentQuestion.answer,
-                question: currentQuestion.question
-            }, {
-                headers: { Authorization: `Bearer ${jwt}` }
-            });
-            setHintData(res.data);
-            setShowHint(true);
-        } catch (error) {
-            console.error('Failed to get hint');
-        } finally {
-            setLoadingAI(false);
-        }
-    };
 
     return (
         <div className="max-w-3xl mx-auto">
@@ -206,7 +207,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                             <button onClick={() => setShowHint(false)} className="absolute top-2 right-2 text-orange-400 hover:text-orange-600"><X className="h-4 w-4"/></button>
                             <div className="flex items-center text-orange-700 dark:text-orange-400 font-bold text-xs mb-2">
                                 <Lightbulb className="h-4 w-4 mr-2" />
-                                AI CONCEPT HIHT
+                                AI CONCEPT HINT
                             </div>
                             <p className="text-sm text-orange-800 dark:text-orange-300 font-medium mb-4">{hintData.hint}</p>
                             <div className="flex flex-wrap gap-2">

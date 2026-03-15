@@ -5,6 +5,7 @@ import { Calendar, Clock, Plus, ChevronLeft, ChevronRight, X, Loader2 } from 'lu
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import { toast } from 'react-toastify';
 
 export default function SchedulePage() {
@@ -29,7 +30,7 @@ export default function SchedulePage() {
     const fetchSchedules = async () => {
         try {
             const { jwt } = await account.createJWT();
-            const response = await axios.get('http://localhost:5000/api/schedules', {
+            const response = await axios.get(`${API_URL}/api/schedules`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setSchedules(response.data);
@@ -45,7 +46,7 @@ export default function SchedulePage() {
         setIsSubmitting(true);
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/schedules', { 
+            await axios.post(`${API_URL}/api/schedules`, { 
                 title, day, start_time: startTime, end_time: endTime 
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
@@ -64,7 +65,7 @@ export default function SchedulePage() {
     const handleDeleteSchedule = async (id: string) => {
         try {
             const { jwt } = await account.createJWT();
-            await axios.delete(`http://localhost:5000/api/schedules/${id}`, {
+            await axios.delete(`${API_URL}/api/schedules/${id}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setSchedules(schedules.filter(s => s.$id !== id));

@@ -18,6 +18,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useStudyHeartbeat } from '@/hooks/useStudyHeartbeat';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import QuizComponent from '@/components/quiz/QuizComponent';
 
 export default function CourseDetailsPage() {
@@ -50,7 +51,7 @@ export default function CourseDetailsPage() {
     const fetchMaterials = async () => {
         try {
             const { jwt } = await account.createJWT();
-            const response = await axios.get(`http://localhost:5000/api/materials/${courseId}`, {
+            const response = await axios.get(`${API_URL}/api/materials/${courseId}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setMaterials(response.data);
@@ -65,7 +66,7 @@ export default function CourseDetailsPage() {
         setGeneratingQuiz(true);
         try {
             const { jwt } = await account.createJWT();
-            const response = await axios.post('http://localhost:5000/api/quizzes/generate', {
+            const response = await axios.post(`${API_URL}/api/quizzes/generate`, {
                 materialId
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
@@ -95,7 +96,7 @@ export default function CourseDetailsPage() {
 
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/materials/upload', formData, {
+            await axios.post(`${API_URL}/api/materials/upload`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${jwt}`
@@ -119,7 +120,7 @@ export default function CourseDetailsPage() {
         setUploading(true);
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/materials/upload', {
+            await axios.post(`${API_URL}/api/materials/upload`, {
                 courseId,
                 title: pastedTitle,
                 content: pastedContent,
@@ -154,7 +155,6 @@ export default function CourseDetailsPage() {
                         materialId={currentMaterialId || undefined}
                         onComplete={(score) => {
                             console.log('Quiz complete, score:', score);
-                            // We can log this to the activity log as well
                         }} 
                     />
                 </div>

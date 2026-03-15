@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import { 
     BarChart3, 
@@ -30,10 +31,10 @@ export default function ReportsPage() {
             try {
                 const { jwt } = await account.createJWT();
                 const [statsRes, coursesRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/activity/stats', {
+                    axios.get(${API_URL}/api/activity/stats', {
                         headers: { Authorization: `Bearer ${jwt}` }
                     }),
-                    axios.get('http://localhost:5000/api/courses', {
+                    axios.get(${API_URL}/api/courses', {
                         headers: { Authorization: `Bearer ${jwt}` }
                     })
                 ]);

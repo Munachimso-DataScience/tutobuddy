@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BookOpen, MoreVertical, Trash2, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Trash2, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -35,7 +36,7 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
         setIsDeleting(true);
         try {
             const { jwt } = await account.createJWT();
-            await axios.delete(`http://localhost:5000/api/courses/${course.$id}`, {
+            await axios.delete(`${API_URL}/api/courses/${course.$id}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             toast.success('Course deleted');
@@ -52,10 +53,10 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
         <Link href={`/dashboard/courses/${course.$id}`} className="block">
             <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer group transition-all"
+                className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer group transition-all"
             >
                 <div className="flex items-start justify-between mb-4">
-                    <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                    <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
                         <BookOpen className="h-6 w-6 text-blue-600 group-hover:text-white transition-colors" />
                     </div>
                     <div className="flex items-center space-x-2">
@@ -63,7 +64,7 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
                             disabled={isDeleting}
                             onClick={handleDelete}
                             onMouseLeave={() => setShowConfirm(false)}
-                            className={`p-2 rounded-lg transition-all flex items-center ${
+                            className={`p-2 rounded-xl transition-all flex items-center ${
                                 showConfirm 
                                     ? 'bg-red-600 text-white' 
                                     : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'

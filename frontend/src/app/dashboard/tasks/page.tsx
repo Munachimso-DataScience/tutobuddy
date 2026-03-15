@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Clock, Plus, Tag, Trash2, AlertCircle, Loader2, X
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { account } from '@/lib/appwrite';
+import { API_URL } from '@/lib/api';
 import { toast } from 'react-toastify';
 
 export default function TasksPage() {
@@ -15,7 +16,7 @@ export default function TasksPage() {
     // New Task Form
     const [title, setTitle] = useState('');
     const [dueDate, setDueDate] = useState('');
-    const [priority, setPriority] = useState('medium');
+    const [priority, setPriority] = useState('Medium');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -25,7 +26,7 @@ export default function TasksPage() {
     const fetchTasks = async () => {
         try {
             const { jwt } = await account.createJWT();
-            const response = await axios.get('http://localhost:5000/api/tasks', {
+            const response = await axios.get(`${API_URL}/api/tasks`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setTasks(response.data);
@@ -41,7 +42,7 @@ export default function TasksPage() {
         setIsSubmitting(true);
         try {
             const { jwt } = await account.createJWT();
-            await axios.post('http://localhost:5000/api/tasks', { 
+            await axios.post(`${API_URL}/api/tasks`, { 
                 title, 
                 due_date: dueDate, 
                 priority 
@@ -52,7 +53,7 @@ export default function TasksPage() {
             setIsModalOpen(false);
             setTitle('');
             setDueDate('');
-            setPriority('medium');
+            setPriority('Medium');
             fetchTasks();
         } catch (error) {
             toast.error('Failed to add task');
@@ -65,7 +66,7 @@ export default function TasksPage() {
         try {
             const newStatus = task.status === 'completed' ? 'pending' : 'completed';
             const { jwt } = await account.createJWT();
-            await axios.patch(`http://localhost:5000/api/tasks/${task.$id}`, { status: newStatus }, {
+            await axios.patch(`${API_URL}/api/tasks/${task.$id}`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setTasks(tasks.map(t => t.$id === task.$id ? { ...t, status: newStatus } : t));
@@ -77,7 +78,7 @@ export default function TasksPage() {
     const handleDeleteTask = async (id: string) => {
         try {
             const { jwt } = await account.createJWT();
-            await axios.delete(`http://localhost:5000/api/tasks/${id}`, {
+            await axios.delete(`${API_URL}/api/tasks/${id}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setTasks(tasks.filter(t => t.$id !== id));
