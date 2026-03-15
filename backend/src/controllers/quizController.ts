@@ -59,6 +59,13 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error('No content or file found for this material');
         }
 
+        if (!text || text.trim().length < 50) {
+            console.warn(`Insufficient text for quiz: ${text?.length} chars`);
+            throw new Error(`The study material is too short to generate a high-quality quiz (found ${text?.length || 0} characters). Please provide more content.`);
+        }
+
+        console.log(`Sending ${text.length} characters of text to AI for quiz generation...`);
+
         // 5. Generate Quiz
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,

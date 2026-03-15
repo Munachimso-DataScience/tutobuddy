@@ -36,6 +36,8 @@ async function fixProfiles() {
                         {
                             user_id: user.$id,
                             full_name: user.name || 'Student',
+                            school: 'General',
+                            course_of_study: 'General',
                             current_streak: 0,
                             last_active: new Date().toISOString()
                         }
