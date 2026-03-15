@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Camera, Upload, Loader2, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { API_URL } from '@/lib/api';
+import { AI_URL } from '@/lib/api';
 import { toast } from 'react-toastify';
 
 export default function OCRScanner() {
@@ -28,8 +28,8 @@ export default function OCRScanner() {
         formData.append('file', file);
 
         try {
-            // Call AI service directly or through backend
-            const response = await axios.post('http://localhost:8000/ocr-evaluate', formData, {
+            // Call AI service
+            const response = await axios.post(`${AI_URL}/ocr-evaluate`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             

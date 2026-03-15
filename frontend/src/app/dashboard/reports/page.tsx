@@ -31,10 +31,10 @@ export default function ReportsPage() {
             try {
                 const { jwt } = await account.createJWT();
                 const [statsRes, coursesRes] = await Promise.all([
-                    axios.get(${API_URL}/api/activity/stats', {
+                    axios.get(`${API_URL}/api/activity/stats`, {
                         headers: { Authorization: `Bearer ${jwt}` }
                     }),
-                    axios.get(${API_URL}/api/courses', {
+                    axios.get(`${API_URL}/api/courses`, {
                         headers: { Authorization: `Bearer ${jwt}` }
                     })
                 ]);
