@@ -6,8 +6,9 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-    return url.startsWith('http') ? url : `http://${url}`;
+    // Try to use internal Render networking first or fallback
+    const publicUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return publicUrl.startsWith('http') ? publicUrl : `http://${publicUrl}`;
 };
 
 export const generateQuiz = async (req: any, res: any) => {
@@ -61,9 +62,13 @@ export const generateQuiz = async (req: any, res: any) => {
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
             num_questions: 5
-        });
+        }, { timeout: 45000 }); // Increase timeout for cold starts
 
         const quizData = quizRes.data.quiz;
+
+        if (!quizData || !quizData.questions) {
+            throw new Error('AI Service returned invalid quiz data format');
+        }
 
         // 6. Store in Appwrite
         const quizDoc = await databases.createDocument(
@@ -98,14 +103,14 @@ export const generateQuiz = async (req: any, res: any) => {
 
         res.status(201).json(quizDoc);
     } catch (error: any) {
-        console.error('Quiz generation error details:');
-        if (error.response) {
-            console.error('Status:', error.response.status);
-            console.error('Data:', error.response.data);
-        } else {
-            console.error('Full Error:', error);
-        }
-        res.status(500).json({ error: error.message });
+        console.error('Quiz Generation CRITICAL FAILURE:', error.message);
+        res.status(500).json({ 
+            error: 'Failed to generate quiz',
+            message: error.message,
+            ai_status: error.response?.status,
+            ai_data: error.response?.data,
+            hint: 'Ensure AI_SERVICE_URL is set to http://tutobuddy-ai:8000 for internal Render networking'
+        });
     }
 };
 
