@@ -7,6 +7,7 @@
     "build": "tsc",
     "setup-db": "ts-node src/fix_schema.ts",
     "fix-profiles": "ts-node src/fix_profiles.ts",
+    "inspect-db": "ts-node src/inspect_schema.ts",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
