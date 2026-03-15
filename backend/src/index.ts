@@ -31,8 +31,30 @@ app.get('/', (req, res) => {
     res.status(200).send('<h1>TutorBuddy API</h1><p>The backend is running. Use the frontend to interact with the service.</p><a href="/health">Check Health Status</a>');
 });
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', message: 'Study Companion API is running' });
+import { databases } from './lib/appwrite-admin';
+import { DATABASE_ID } from './lib/collections';
+
+app.get('/health', async (req, res) => {
+    try {
+        await databases.get(DATABASE_ID);
+        res.status(200).json({ 
+            status: 'OK', 
+            database: 'Connected',
+            time: new Date().toISOString(),
+            env: {
+                ai_url: process.env.AI_SERVICE_URL ? 'Set' : 'Missing',
+                appwrite_endpoint: process.env.APPWRITE_ENDPOINT ? 'Set' : 'Missing',
+                appwrite_project: process.env.APPWRITE_PROJECT_ID ? 'Set' : 'Missing'
+            }
+        });
+    } catch (e: any) {
+        res.status(500).json({ 
+            status: 'ERROR', 
+            database: 'Failed to connect',
+            error: e.message,
+            hint: 'Check APPWRITE_API_KEY and APPWRITE_PROJECT_ID'
+        });
+    }
 });
 
 // Protected Course Routes

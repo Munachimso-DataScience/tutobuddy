@@ -17,6 +17,7 @@ export const generateQuiz = async (req: any, res: any) => {
         const { materialId } = req.body;
         const userId = req.user.$id;
 
+        console.log(`Using Database: ${DATABASE_ID}, Quiz Collection: ${COLLECTIONS.QUIZZES}`);
         console.log(`Generating quiz for material: ${materialId} using AI at ${AI_URL}`);
 
         // 1. Get material file from database to get file_id and course_id

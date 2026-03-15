@@ -15,8 +15,12 @@ import re
 # Download NLTK data
 def download_nltk():
     libs = ['wordnet', 'omw-1.4', 'punkt', 'averaged_perceptron_tagger', 'stopwords']
+    data_path = os.environ.get('NLTK_DATA', '/opt/render/nltk_data')
+    if not os.path.exists(data_path):
+        os.makedirs(data_path, exist_ok=True)
+    nltk.data.path.append(data_path)
     for lib in libs:
-        nltk.download(lib, quiet=True)
+        nltk.download(lib, download_dir=data_path, quiet=True)
 
 download_nltk()
 
