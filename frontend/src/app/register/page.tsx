@@ -78,6 +78,13 @@ export default function RegisterPage() {
                 className="max-w-lg w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-xl"
             >
                 <div className="text-center">
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="mx-auto h-20 w-20 mb-6 bg-white dark:bg-gray-700 rounded-3xl p-3 shadow-xl"
+                    >
+                        <img src="/logo.png" alt="TutorBuddy Logo" className="w-full h-full object-contain" />
+                    </motion.div>
                     <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
                         Create Your Account
                     </h2>

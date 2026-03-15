@@ -39,9 +39,9 @@ export default function LoginPage() {
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center shadow-lg mb-4"
+                        className="mx-auto h-20 w-20 mb-6 bg-white dark:bg-gray-700 rounded-3xl p-3 shadow-xl"
                     >
-                        <LogIn className="h-8 w-8 text-white" />
+                        <img src="/logo.png" alt="TutorBuddy Logo" className="w-full h-full object-contain" />
                     </motion.div>
                     <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
                         Study Companion

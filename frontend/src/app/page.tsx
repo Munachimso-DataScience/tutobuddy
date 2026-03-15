@@ -42,10 +42,8 @@ export default function Home() {
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-linear-to-br from-indigo-600 to-blue-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
-              <BrainCircuit className="w-6 h-6 text-white" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="TutorBuddy Logo" className="h-10 w-10 rounded-xl object-contain shadow-lg shadow-indigo-500/10" />
             <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-blue-600">
               TutorBuddy
             </span>

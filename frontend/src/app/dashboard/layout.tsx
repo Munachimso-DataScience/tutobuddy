@@ -70,10 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Sidebar */}
                 <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                     <div className="p-6 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                                <BookOpen className="h-5 w-5 text-white" />
-                            </div>
+                        <div className="flex items-center space-x-3">
+                            <img src="/logo.png" alt="TutorBuddy Logo" className="h-9 w-9 rounded-lg object-contain shadow-md" />
                             <span className="text-xl font-bold text-gray-900 dark:text-white">Study Companion</span>
                         </div>
                         <button onClick={toggleSidebar} className="lg:hidden text-gray-500">
