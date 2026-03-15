@@ -6,22 +6,25 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    let url = 'http://localhost:8000';
-    let source = 'default local';
-
-    // 1. Check if AI_SERVICE_URL is explicitly set
+    // 1. Check if AI_SERVICE_URL is explicitly set (e.g., local .env)
     if (process.env.AI_SERVICE_URL) {
-        url = process.env.AI_SERVICE_URL;
-        source = 'environment variable';
-    } else if (process.env.RENDER === 'true') {
-        // 2. Fallback for Render Internal Networking
-        url = 'http://tutobuddy-ai:8000';
-        source = 'Render internal networking';
+        const url = process.env.AI_SERVICE_URL;
+        const finalUrl = url.startsWith('http') ? url : `http://${url}`;
+        console.log(`AI Service URL: ${finalUrl} (source: environment variable)`);
+        return finalUrl;
+    }
+
+    // 2. If on Render, try internal networking first
+    if (process.env.RENDER === 'true') {
+        const url = 'http://tutobuddy-ai:8000';
+        console.log(`AI Service URL: ${url} (source: Render internal networking)`);
+        return url;
     }
     
-    const finalUrl = url.startsWith('http') ? url : `http://${url}`;
-    console.log(`AI Service URL: ${finalUrl} (source: ${source})`);
-    return finalUrl;
+    // 3. Last fallback
+    const url = 'http://localhost:8000';
+    console.log(`AI Service URL: ${url} (source: default local)`);
+    return url;
 };
 
 export const generateQuiz = async (req: any, res: any) => {
@@ -54,20 +57,24 @@ export const generateQuiz = async (req: any, res: any) => {
                 contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
             });
 
-            // 4. Extract text (using AI service with fetch)
-            const extractionRes = await fetch(`${AI_URL}/extract-text`, {
-                method: 'POST',
-                body: formData as any,
-                headers: formData.getHeaders()
-            });
-
-            if (!extractionRes.ok) {
-                const errText = await extractionRes.text();
-                throw new Error(`AI Extraction failed: ${errText}`);
+            // 4. Extract text (using axios for better node compatibility)
+            try {
+                const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
+                    headers: {
+                        ...formData.getHeaders()
+                    },
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity
+                });
+                text = extractionRes.data.text;
+            } catch (extErr: any) {
+                console.error('AI EXTRACTION FAILED:', {
+                    status: extErr.response?.status,
+                    data: extErr.response?.data,
+                    message: extErr.message
+                });
+                throw new Error(`AI Extraction failed: ${extErr.response?.data?.detail || extErr.message}`);
             }
-
-            const extractionData: any = await extractionRes.json();
-            text = extractionData.text;
         } else {
             throw new Error('No content or file found for this material');
         }

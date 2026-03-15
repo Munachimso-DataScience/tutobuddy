@@ -214,6 +214,9 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         filename = file.filename.lower()
+        size = len(content)
+        print(f"--- Extraction Request Received ---")
+        print(f"File: {filename}, Type: {file.content_type}, Size: {size} bytes")
         
         if filename.endswith('.pdf'):
             reader = PyPDF2.PdfReader(io.BytesIO(content))
@@ -241,6 +244,8 @@ async def generate_quiz(data: dict):
     try:
         text = data.get("text", "")
         num_requested = data.get("num_questions", 5)
+        print(f"--- Quiz Generation Request Received ---")
+        print(f"Text length: {len(text)} characters")
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
