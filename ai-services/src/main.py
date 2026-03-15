@@ -218,8 +218,10 @@ async def extract_text(file: UploadFile = File(...)):
         if filename.endswith('.pdf'):
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = ""
-            for page in reader.pages:
-                text += page.extract_text() or ""
+            # Limit to first 100 pages to prevent timeouts on large docs
+            page_limit = min(len(reader.pages), 100)
+            for i in range(page_limit):
+                text += reader.pages[i].extract_text() or ""
             return {"text": text}
         elif filename.endswith('.docx'):
             import docx
@@ -242,10 +244,16 @@ async def generate_quiz(data: dict):
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
+
+        # Truncate extremely large text to prevent memory/timeout issues on free tier
+        # 50,000 characters is plenty for a 5-question quiz.
+        if len(text) > 50000:
+            print(f"Truncating text from {len(text)} to 50,000 chars for performance.")
+            text = text[:50000]
             
         sentences = preprocess_text(text)
         if not sentences:
-            raise HTTPException(status_code=400, detail="Text too short to generate questions")
+            raise HTTPException(status_code=400, detail="Text too short or invalid to generate questions")
             
         random.shuffle(sentences)
         
