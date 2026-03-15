@@ -1,9 +1,6 @@
+import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
-
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const COLLECTION_ACTIVITY = 'activity_logs';
-const COLLECTION_PROFILES = 'users_profiles';
 
 export const logActivity = async (req: any, res: any) => {
     try {
@@ -12,7 +9,7 @@ export const logActivity = async (req: any, res: any) => {
 
         const log = await databases.createDocument(
             DATABASE_ID,
-            COLLECTION_ACTIVITY,
+            COLLECTIONS.ACTIVITY,
             ID.unique(),
             {
                 user_id: userId,
@@ -24,7 +21,7 @@ export const logActivity = async (req: any, res: any) => {
 
         // Update last_active and check streak
         try {
-            const profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
+            const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
             const lastActive = new Date(profile.last_active);
             const today = new Date();
 
@@ -38,7 +35,7 @@ export const logActivity = async (req: any, res: any) => {
                 newStreak = 1;
             }
 
-            await databases.updateDocument(DATABASE_ID, COLLECTION_PROFILES, userId, {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
                 last_active: today.toISOString(),
                 current_streak: newStreak
             });
@@ -57,7 +54,7 @@ export const getStats = async (req: any, res: any) => {
         const userId = req.user.$id;
         let profile;
         try {
-            profile = await databases.getDocument(DATABASE_ID, COLLECTION_PROFILES, userId);
+            profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
         } catch (e) {
             // Default profile if not found
             profile = {
@@ -72,7 +69,7 @@ export const getStats = async (req: any, res: any) => {
 
         const logs = await databases.listDocuments(
             DATABASE_ID,
-            COLLECTION_ACTIVITY,
+            COLLECTIONS.ACTIVITY,
             [
                 Query.equal('user_id', userId),
                 Query.greaterThan('timestamp', lastWeek.toISOString())

@@ -1,14 +1,9 @@
+import { COLLECTIONS, DATABASE_ID, BUCKET_ID } from '../lib/collections';
 import { databases, storage } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 const { InputFile } = require('node-appwrite/file');
 import fs from 'fs';
 import path from 'path';
-
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const COLLECTION_COURSES = 'courses';
-
-const COLLECTION_MATERIALS = 'study_materials';
-const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
 
 export const createCourse = async (req: any, res: any) => {
     try {
@@ -32,7 +27,7 @@ export const createCourse = async (req: any, res: any) => {
 
         const course = await databases.createDocument(
             DATABASE_ID,
-            COLLECTION_COURSES,
+            COLLECTIONS.COURSES,
             ID.unique(),
             courseData
         );
@@ -50,7 +45,7 @@ export const createCourse = async (req: any, res: any) => {
                 // Save Metadata
                 await databases.createDocument(
                     DATABASE_ID,
-                    COLLECTION_MATERIALS,
+                    COLLECTIONS.MATERIALS,
                     ID.unique(),
                     {
                         course_id: course.$id,
@@ -82,7 +77,7 @@ export const getCourses = async (req: any, res: any) => {
         try {
             const response = await databases.listDocuments(
                 DATABASE_ID,
-                COLLECTION_COURSES,
+                COLLECTIONS.COURSES,
                 [Query.equal('student_id', studentId)]
             );
             res.status(200).json(response.documents);
@@ -102,7 +97,7 @@ export const deleteCourse = async (req: any, res: any) => {
         const studentId = req.user.$id;
 
         // 1. Verify ownership
-        const course = await databases.getDocument(DATABASE_ID, COLLECTION_COURSES, id);
+        const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, id);
         if (course.student_id !== studentId) {
             return res.status(403).json({ error: 'Unauthorized to delete this course' });
         }
@@ -110,7 +105,7 @@ export const deleteCourse = async (req: any, res: any) => {
         // 2. Cleanup associated materials and storage files
         const materials = await databases.listDocuments(
             DATABASE_ID,
-            COLLECTION_MATERIALS,
+            COLLECTIONS.MATERIALS,
             [Query.equal('course_id', id)]
         );
 
@@ -119,7 +114,7 @@ export const deleteCourse = async (req: any, res: any) => {
                 // Delete file from storage
                 await storage.deleteFile(BUCKET_ID, material.file_id);
                 // Delete material record
-                await databases.deleteDocument(DATABASE_ID, COLLECTION_MATERIALS, material.$id);
+                await databases.deleteDocument(DATABASE_ID, COLLECTIONS.MATERIALS, material.$id);
             } catch (err) {
                 console.warn(`Could not full cleanup material ${material.$id}:`, err);
             }
@@ -128,20 +123,20 @@ export const deleteCourse = async (req: any, res: any) => {
         // 3. Cleanup associated quizzes
         const quizzes = await databases.listDocuments(
             DATABASE_ID,
-            'quizzes',
+            COLLECTIONS.QUIZZES,
             [Query.equal('course_id', id)]
         );
 
         for (const quiz of quizzes.documents) {
             try {
-                await databases.deleteDocument(DATABASE_ID, 'quizzes', quiz.$id);
+                await databases.deleteDocument(DATABASE_ID, COLLECTIONS.QUIZZES, quiz.$id);
             } catch (err) {
                 console.warn(`Could not cleanup quiz ${quiz.$id}:`, err);
             }
         }
 
         // 4. Finally delete the course
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_COURSES, id);
+        await databases.deleteDocument(DATABASE_ID, COLLECTIONS.COURSES, id);
 
         res.status(200).json({ message: 'Course and all related data deleted successfully' });
     } catch (error: any) {

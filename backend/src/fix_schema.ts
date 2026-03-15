@@ -10,11 +10,11 @@ const client = new Client()
     .setKey(process.env.APPWRITE_API_KEY || '');
 
 const databases = new Databases(client);
-const databaseId = process.env.APPWRITE_DATABASE_ID || 'tutorbuddy';
+import { COLLECTIONS, DATABASE_ID } from './lib/collections';
 
 const schema = [
     {
-        id: 'users_profiles',
+        id: COLLECTIONS.USERS,
         name: 'User Profiles',
         attributes: [
             { key: 'user_id', type: 'string', size: 255, required: false },
@@ -26,7 +26,7 @@ const schema = [
         ]
     },
     {
-        id: 'courses',
+        id: COLLECTIONS.COURSES,
         name: 'Courses',
         attributes: [
             { key: 'title', type: 'string', size: 255, required: false },
@@ -38,7 +38,7 @@ const schema = [
         ]
     },
     {
-        id: 'materials',
+        id: COLLECTIONS.MATERIALS,
         name: 'Materials',
         attributes: [
             { key: 'title', type: 'string', size: 255, required: false },
@@ -50,7 +50,7 @@ const schema = [
         ]
     },
     {
-        id: 'quizzes',
+        id: COLLECTIONS.QUIZZES,
         name: 'Quizzes',
         attributes: [
             { key: 'user_id', type: 'string', size: 255, required: false },
@@ -62,13 +62,23 @@ const schema = [
         ]
     },
     {
-        id: 'activity_logs',
+        id: COLLECTIONS.ACTIVITY,
         name: 'Activity Logs',
         attributes: [
             { key: 'user_id', type: 'string', size: 255, required: false },
             { key: 'type', type: 'string', size: 50, required: false },
             { key: 'details', type: 'string', size: 5000, required: false },
             { key: 'timestamp', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.TASKS,
+        name: 'Tasks',
+        attributes: [
+            { key: 'user_id', type: 'string', size: 255, required: true },
+            { key: 'title', type: 'string', size: 255, required: true },
+            { key: 'status', type: 'string', size: 50, required: false, default: 'pending' },
+            { key: 'due_date', type: 'datetime', required: false }
         ]
     }
 ];
@@ -78,21 +88,21 @@ async function fixSchema() {
     
     // Ensure Database exists
     try {
-        await databases.get(databaseId);
-        console.log(`Database "${databaseId}" OK.`);
+        await databases.get(DATABASE_ID);
+        console.log(`Database "${DATABASE_ID}" OK.`);
     } catch (e) {
-        console.log(`Creating database "${databaseId}"...`);
-        await databases.create(databaseId, databaseId);
+        console.log(`Creating database "${DATABASE_ID}"...`);
+        await databases.create(DATABASE_ID, DATABASE_ID);
     }
 
     for (const col of schema) {
         let collection;
         try {
-            collection = await databases.getCollection(databaseId, col.id);
+            collection = await databases.getCollection(DATABASE_ID, col.id);
             console.log(`Collection "${col.id}" exists.`);
         } catch (e) {
             console.log(`Creating collection "${col.id}"...`);
-            collection = await databases.createCollection(databaseId, col.id, col.name);
+            collection = await databases.createCollection(DATABASE_ID, col.id, col.name);
         }
 
         const existingAttrs = collection.attributes.map((a: any) => a.key);
@@ -106,13 +116,13 @@ async function fixSchema() {
             console.log(`  Adding attribute "${attr.key}" to "${col.id}"...`);
             try {
                 if (attr.type === 'string') {
-                    await databases.createStringAttribute(databaseId, col.id, attr.key, attr.size!, attr.required, attr.default as any);
+                    await databases.createStringAttribute(DATABASE_ID, col.id, attr.key, attr.size!, attr.required, attr.default as any);
                 } else if (attr.type === 'integer') {
-                    await databases.createIntegerAttribute(databaseId, col.id, attr.key, attr.required, 0, 1000000, attr.default as any);
+                    await databases.createIntegerAttribute(DATABASE_ID, col.id, attr.key, attr.required, 0, 1000000, attr.default as any);
                 } else if (attr.type === 'datetime') {
-                    await databases.createDatetimeAttribute(databaseId, col.id, attr.key, attr.required);
+                    await databases.createDatetimeAttribute(DATABASE_ID, col.id, attr.key, attr.required);
                 } else if (attr.type === 'boolean') {
-                    await databases.createBooleanAttribute(databaseId, col.id, attr.key, attr.required, attr.default as any);
+                    await databases.createBooleanAttribute(DATABASE_ID, col.id, attr.key, attr.required, attr.default as any);
                 }
                 
                 // Wait a bit for Appwrite to process

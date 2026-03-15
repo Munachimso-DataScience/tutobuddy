@@ -1,12 +1,10 @@
+import { COLLECTIONS, DATABASE_ID, BUCKET_ID } from '../lib/collections';
 import { databases, storage } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 import axios from 'axios';
 import fs from 'fs';
 import fetch from 'node-fetch';
 
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID!;
-const BUCKET_ID = process.env.APPWRITE_STORAGE_ID || 'tutorbuddy';
-const COLLECTION_QUIZZES = 'quizzes';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 export const generateQuiz = async (req: any, res: any) => {
@@ -15,7 +13,7 @@ export const generateQuiz = async (req: any, res: any) => {
         const userId = req.user.$id;
 
         // 1. Get material file from database to get file_id and course_id
-        const material = await databases.getDocument(DATABASE_ID, 'study_materials', materialId);
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
         
         let text = '';
 
@@ -64,7 +62,7 @@ export const generateQuiz = async (req: any, res: any) => {
         // 6. Store in Appwrite
         const quizDoc = await databases.createDocument(
             DATABASE_ID,
-            COLLECTION_QUIZZES,
+            COLLECTIONS.QUIZZES,
             ID.unique(),
             {
                 title: `Quiz: ${material.title || 'Extracted material'}`,
@@ -81,10 +79,10 @@ export const generateQuiz = async (req: any, res: any) => {
 
         // 7. Update course completion tracking
         try {
-            const course = await databases.getDocument(DATABASE_ID, 'courses', material.course_id);
+            const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, material.course_id);
             const newProgress = Math.min((course.progress || 0) + 5, 100);
             const newReadiness = Math.min((course.exam_readiness || 0) + 5, 100);
-            await databases.updateDocument(DATABASE_ID, 'courses', material.course_id, {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.COURSES, material.course_id, {
                 progress: newProgress,
                 exam_readiness: newReadiness
             });
@@ -112,7 +110,7 @@ export const getQuizzes = async (req: any, res: any) => {
 
         const response = await databases.listDocuments(
             DATABASE_ID,
-            COLLECTION_QUIZZES,
+            COLLECTIONS.QUIZZES,
             [
                 Query.equal('material_id', materialId),
                 Query.equal('user_id', userId)

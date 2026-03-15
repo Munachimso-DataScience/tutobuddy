@@ -31,10 +31,18 @@ services:
       - key: APPWRITE_PROJECT_ID
         sync: false
       - key: APPWRITE_DATABASE_ID
-        sync: false
+        value: "tutorbuddy"
       - key: APPWRITE_STORAGE_ID
-        sync: false
+        value: "tutorbuddy"
       - key: APPWRITE_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        value: "smtp.mailtrap.io"
+      - key: SMTP_PORT
+        value: "2525"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
         sync: false
 
   # 3. FRONTEND (Next.js)
