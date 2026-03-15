@@ -140,11 +140,17 @@ async function fixSchema() {
             if (existing) {
                 // Check if we need to update size
                 if (attr.type === 'string' && attr.size && existing.size < attr.size) {
-                    console.log(`  Updating attribute "${attr.key}" size in "${col.id}" from ${existing.size} to ${attr.size}...`);
+                    console.log(`  Attribute "${attr.key}" size is too small (${existing.size} < ${attr.size}). RE-CREATING...`);
                     try {
-                        await databases.updateStringAttribute(DATABASE_ID, col.id, attr.key, attr.size, attr.required, attr.default as any);
+                        // Delete first
+                        await databases.deleteAttribute(DATABASE_ID, col.id, attr.key);
+                        // Wait for deletion to propagate
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        // Re-create with new size
+                        await databases.createStringAttribute(DATABASE_ID, col.id, attr.key, attr.size, attr.required, attr.default as any, false);
+                        console.log(`  Attribute "${attr.key}" re-created with size ${attr.size}.`);
                     } catch (err: any) {
-                        console.error(`  Failed to update "${attr.key}": ${err.message}`);
+                        console.error(`  Failed to re-create "${attr.key}": ${err.message}`);
                     }
                 }
                 continue;
@@ -153,13 +159,13 @@ async function fixSchema() {
             console.log(`  Adding attribute "${attr.key}" to "${col.id}"...`);
             try {
                 if (attr.type === 'string') {
-                    await databases.createStringAttribute(DATABASE_ID, col.id, attr.key, attr.size!, attr.required, attr.default as any);
+                    await databases.createStringAttribute(DATABASE_ID, col.id, attr.key, attr.size!, attr.required, attr.default as any, false);
                 } else if (attr.type === 'integer') {
-                    await databases.createIntegerAttribute(DATABASE_ID, col.id, attr.key, attr.required, 0, 1000000, attr.default as any);
+                    await databases.createIntegerAttribute(DATABASE_ID, col.id, attr.key, attr.required, 0, 1000000, attr.default as any, false);
                 } else if (attr.type === 'datetime') {
-                    await databases.createDatetimeAttribute(DATABASE_ID, col.id, attr.key, attr.required);
+                    await databases.createDatetimeAttribute(DATABASE_ID, col.id, attr.key, attr.required, undefined, false);
                 } else if (attr.type === 'boolean') {
-                    await databases.createBooleanAttribute(DATABASE_ID, col.id, attr.key, attr.required, attr.default as any);
+                    await databases.createBooleanAttribute(DATABASE_ID, col.id, attr.key, attr.required, attr.default as any, false);
                 }
                 
                 // Wait a bit for Appwrite to process
