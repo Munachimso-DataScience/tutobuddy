@@ -30,7 +30,7 @@ const schema = [
         name: 'Courses',
         attributes: [
             { key: 'title', type: 'string', size: 255, required: false },
-            { key: 'description', type: 'string', size: 2048, required: false },
+            { key: 'description', type: 'string', size: 5000, required: false },
             { key: 'code', type: 'string', size: 50, required: false },
             { key: 'student_id', type: 'string', size: 255, required: false },
             { key: 'progress', type: 'integer', required: false, default: 0 },
@@ -51,7 +51,8 @@ const schema = [
             { key: 'content', type: 'string', size: 65000, required: false },
             { key: 'category', type: 'string', size: 255, required: false, default: 'General' },
             { key: 'processed', type: 'boolean', required: false, default: false },
-            { key: 'created_at', type: 'datetime', required: false }
+            { key: 'created_at', type: 'datetime', required: false },
+            { key: 'uploaded_at', type: 'datetime', required: false }
         ]
     },
     {

@@ -14,6 +14,7 @@ export const createCourse = async (req: any, res: any) => {
         // 1. Create Course
         const courseData: any = {
             title: title,
+            description: description || '',
             code,
             student_id: studentId,
             progress: 0,
@@ -53,6 +54,7 @@ export const createCourse = async (req: any, res: any) => {
                         file_id: appwriteFile.$id,
                         title: file.originalname,
                         type: path.extname(file.originalname).substring(1) || 'unknown',
+                        created_at: new Date().toISOString(),
                         uploaded_at: new Date().toISOString()
                     }
                 );

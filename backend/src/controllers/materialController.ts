@@ -15,6 +15,7 @@ export const uploadMaterial = async (req: any, res: any) => {
             title: title || (file ? file.originalname : 'Pasted Note'),
             category: category || 'General',
             created_at: new Date().toISOString(),
+            uploaded_at: new Date().toISOString(),
             type: file ? (path.extname(file.originalname).substring(1) || 'unknown') : 'note'
         };
 

@@ -203,7 +203,7 @@ export default function DashboardPage() {
                         <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.name} ({course.code})</h4>
+                                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.title} ({course.code})</h4>
                                     {daysToExam !== null && daysToExam > 0 ? (
                                         <p className="text-xs font-semibold text-orange-500 mt-1">{daysToExam} days until final exam ({new Date(course.exam_date).toLocaleDateString()})</p>
                                     ) : daysToExam !== null && daysToExam <= 0 ? (
