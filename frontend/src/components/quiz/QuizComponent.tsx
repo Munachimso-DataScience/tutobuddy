@@ -55,6 +55,8 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         }
     };
 
+    const [explanationData, setExplanationData] = useState<any>(null);
+
     const handleAnswer = async (answer: string) => {
         setAnswers({ ...answers, [currentIndex]: answer });
         const isCorrect = answer === currentQuestion.answer;
@@ -75,6 +77,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                     headers: { Authorization: `Bearer ${jwt}` }
                 });
                 setAiFeedback(res.data.explanation);
+                setExplanationData(res.data);
             } catch (error) {
                 console.error('Failed to get AI explanation');
             } finally {
@@ -117,6 +120,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
             setCurrentIndex(currentIndex + 1);
             setShowExplanation(false);
             setAiFeedback(null);
+            setExplanationData(null);
             setEssayResult(null);
         } else {
             setIsFinished(true);
@@ -335,6 +339,26 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                                     <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-4 rounded-xl">
                                         {aiFeedback || currentQuestion.explanation || currentQuestion.rubric}
                                     </p>
+
+                                    {explanationData?.links && (
+                                        <div className="pt-2">
+                                            <span className="text-xs font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-tighter block mb-2">Smart Resources for Correction</span>
+                                            <div className="flex flex-wrap gap-2">
+                                                {explanationData.links.map((link: any, idx: number) => (
+                                                    <a 
+                                                        key={idx}
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-3 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 shadow-sm hover:shadow-md transition-all border border-blue-100 dark:border-blue-900/40"
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                        <span>{link.title}</span>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     {essayResult?.model_answer_highlights && (
                                         <div className="pt-2">

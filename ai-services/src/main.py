@@ -7,13 +7,18 @@ import io
 import random
 import nltk
 from nltk.corpus import wordnet
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tag import pos_tag
 from collections import Counter
+import re
 
 # Download NLTK data
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+def download_nltk():
+    libs = ['wordnet', 'omw-1.4', 'punkt', 'averaged_perceptron_tagger', 'stopwords']
+    for lib in libs:
+        nltk.download(lib, quiet=True)
+
+download_nltk()
 
 load_dotenv()
 
@@ -26,344 +31,316 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# NLTK is used for all text processing as a lighter alternative to spaCy
-def get_keywords(text):
-    """Extracts keywords using NLTK POS tagging"""
-    try:
-        tokens = nltk.word_tokenize(text)
-        tagged = nltk.pos_tag(tokens)
-        # Extract Nouns and Proper Nouns
-        keywords = [word for word, pos in tagged if pos in ('NN', 'NNS', 'NNP', 'NNPS') and len(word) > 4 and word.isalnum()]
-        return keywords
-    except Exception as e:
-        print(f"NLTK Keyword Error: {e}")
-        return text.lower().split()
+# --- NLP Objective Question Generator ---
 
-def get_simple_keywords(text):
-    """Simple keyword extraction fallback when spacy is unavailable"""
-    words = text.lower().split()
-    # Filter out common stop words and short words
-    stop_words = {'this', 'that', 'with', 'from', 'there', 'their', 'under', 'these', 'would', 'could', 'about', 'which'}
-    keywords = [w.strip('.,!?;:"()') for w in words if len(w) > 4 and w not in stop_words and w.isalnum()]
-    return keywords
+def preprocess_text(text):
+    """Clean and tokenize text into sentences"""
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    sentences = sent_tokenize(text)
+    return [s for s in sentences if len(s.strip()) > 40]
+
+def extract_keywords(sentence):
+    """Extract candidate keywords using POS tagging (NN, NNS, NNP, JJ, VB)"""
+    tokens = word_tokenize(sentence)
+    tagged = pos_tag(tokens)
+    
+    # Filter for technical/important parts of speech
+    candidates = []
+    for word, pos in tagged:
+        # Avoid stopwords and very short words
+        if len(word) < 4 or not word.isalnum():
+            continue
+        
+        # Include Nouns, Adjectives, and Verbs (per user request)
+        if pos in ('NN', 'NNS', 'NNP', 'JJ', 'VB'):
+            candidates.append((word, pos))
+            
+    return candidates
+
+def get_wordnet_pos(treebank_tag):
+    """Map treebank POS tags to WordNet POS tags"""
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
+
+def generate_distractors(target_word, pos_tag):
+    """Generate distractors using WordNet strategies (hypernyms, hyponyms, coordinates)"""
+    distractors = set()
+    wn_pos = get_wordnet_pos(pos_tag)
+    
+    synsets = wordnet.synsets(target_word, pos=wn_pos)
+    if not synsets:
+        # Try without POS restriction if nothing found
+        synsets = wordnet.synsets(target_word)
+        
+    if synsets:
+        synset = synsets[0]
+        
+        # 1. Hypernym Strategy (Coordinate terms)
+        for hypernym in synset.hypernyms():
+            for hyponym in hypernym.hyponyms():
+                name = hyponym.lemmas()[0].name().replace('_', ' ')
+                if name.lower() != target_word.lower():
+                    distractors.add(name)
+                    if len(distractors) >= 10: break
+            if len(distractors) >= 10: break
+            
+        # 2. Hyponym Strategy
+        if len(distractors) < 5:
+            for hyponym in synset.hyponyms():
+                name = hyponym.lemmas()[0].name().replace('_', ' ')
+                if name.lower() != target_word.lower():
+                    distractors.add(name)
+                    if len(distractors) >= 15: break
+
+    return list(distractors)
+
+def filter_distractors(distractors, target_word, sentence, pos_tag):
+    """Apply filtering rules for high-quality distractors"""
+    filtered = []
+    target_len = len(target_word)
+    
+    # Pre-tokenize sentence for POS consistency check
+    # (Simple check: distractors should likely be valid in context)
+    
+    for d in distractors:
+        d = d.lower()
+        # Rule: Not a synonym or duplicate
+        if d == target_word.lower() or d in filtered:
+            continue
+            
+        # Rule: Not a substring of the answer
+        if d in target_word.lower() or target_word.lower() in d:
+            continue
+            
+        # Rule: Similar POS (approximated by WordNet match or word structure)
+        # Rule: Reasonable length (not wildly different from target)
+        if abs(len(d) - target_len) > 8:
+            continue
+            
+        filtered.append(d)
+        if len(filtered) >= 3:
+            break
+            
+    # Fallback to similar words if WordNet fails
+    fallbacks = ["process", "system", "theory", "method", "concept", "approach", "framework"]
+    while len(filtered) < 3:
+        f = random.choice(fallbacks)
+        if f not in filtered and f != target_word.lower():
+            filtered.append(f)
+            
+    return filtered
+
+def score_question(question_text, answer, distractors):
+    """Simple scoring module (0-100)"""
+    score = 100
+    
+    # 1. POS consistency (simple check: if answer is capitalized, distractors should be too - ignored for now)
+    
+    # 2. Option length similarity
+    avg_len = sum(len(o) for o in distractors + [answer]) / 4
+    for o in distractors + [answer]:
+        if abs(len(o) - avg_len) > 10:
+            score -= 10
+            
+    # 3. Duplicate check
+    if len(set([answer] + distractors)) < 4:
+        score -= 50
+        
+    return score
+
+def generate_mcq(sentence, target_keyword_info):
+    """Build a complete MCQ object following the pipeline"""
+    word, pos = target_keyword_info
+    
+    # 1. Distractors
+    raw_distractors = generate_distractors(word, pos)
+    filtered = filter_distractors(raw_distractors, word, sentence, pos)
+    
+    # 2. Scoring
+    q_score = score_question(sentence, word, filtered)
+    if q_score < 70:
+        return None # Reject low quality
+    
+    # 3. Format
+    options = filtered + [word]
+    random.shuffle(options)
+    
+    # Assign A, B, C, D
+    mapping = {0: 'A', 1: 'B', 2: 'C', 3: 'D'}
+    answer_letter = ''
+    formatted_options = []
+    for i, opt in enumerate(options):
+        letter = mapping[i]
+        formatted_options.append(f"{letter}. {opt}")
+        if opt == word:
+            answer_letter = letter
+            
+    return {
+        "type": "mcq",
+        "question": sentence.replace(word, "________"),
+        "options": options,
+        "formatted_options": formatted_options,
+        "answer": word,
+        "correct_letter": answer_letter,
+        "explanation": f"The term '{word}' correctly completes the context of this statement found in your study material.",
+        "score": q_score
+    }
+
+# --- API Endpoints ---
 
 @app.get("/")
 async def root():
-    return {"status": "OK", "service": "Custom AI Study Companion", "message": "Service is operational. Use /health for full check."}
+    return {"status": "OK", "service": "TutorBuddy AI Core", "version": "2.0 (NLP Pipeline)"}
 
 @app.get("/health")
 async def health():
-    return {"status": "OK", "service": "Custom AI Study Companion"}
-
-def get_distractors(word, context_words):
-    """Simple distractor generation strategy"""
-    distractors = set()
-    syns = wordnet.synsets(word)
-    if syns:
-        hyper = syns[0].hypernyms()
-        if hyper:
-            for item in hyper[0].hyponyms():
-                name = item.lemmas()[0].name().replace('_', ' ')
-                if name.lower() != word.lower():
-                    distractors.add(name)
-    
-    # If not enough distractors, use random nouns from context
-    if len(distractors) < 3:
-        for w in context_words:
-            if w.lower() != word.lower() and len(w) > 3:
-                distractors.add(w)
-            if len(distractors) >= 3:
-                break
-                
-    # Final fallback
-    fallbacks = ["Unknown", "General Concept", "Related Theory", "Alternative Process"]
-    while len(distractors) < 3:
-        distractors.add(fallbacks[len(distractors) % len(fallbacks)])
-        
-    return list(distractors)[:3]
+    return {"status": "OK"}
 
 @app.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
-        if file.filename.endswith('.pdf'):
+        filename = file.filename.lower()
+        
+        if filename.endswith('.pdf'):
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = ""
             for page in reader.pages:
                 text += page.extract_text() or ""
             return {"text": text}
-        elif file.filename.endswith('.docx'):
-            try:
-                import docx
-                doc = docx.Document(io.BytesIO(content))
-                text = "\n".join([para.text for para in doc.paragraphs])
-                return {"text": text}
-            except ImportError:
-                raise HTTPException(status_code=500, detail="python-docx not installed on server")
-        elif file.filename.endswith('.txt'):
+        elif filename.endswith('.docx'):
+            import docx
+            doc = docx.Document(io.BytesIO(content))
+            text = "\n".join([para.text for para in doc.paragraphs])
+            return {"text": text}
+        elif filename.endswith('.txt'):
             return {"text": content.decode('utf-8')}
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
     except Exception as e:
+        print(f"Extraction Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate-quiz")
 async def generate_quiz(data: dict):
     try:
         text = data.get("text", "")
+        num_requested = data.get("num_questions", 5)
+        
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
             
-        # Use NLTK for keyword and sentence extraction
-        keywords = get_keywords(text)
-        keyword_freq = Counter(keywords).most_common(20)
-        top_keywords = [k[0] for k in keyword_freq]
+        sentences = preprocess_text(text)
+        if not sentences:
+            raise HTTPException(status_code=400, detail="Text too short to generate questions")
+            
+        random.shuffle(sentences)
         
-        # Sentence splitting using NLTK
-        sentences = nltk.sent_tokenize(text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
+        quiz_questions = []
+        used_words = set()
         
-        questions = []
-        
-        # Generate MCQs (3)
-        mcq_count = 0
-        used_sents = set()
-        
-        for kw in top_keywords:
-            if mcq_count >= 3: break
-            for sent in sentences:
-                if kw in sent and sent not in used_sents:
-                    distractors = get_distractors(kw, top_keywords)
-                    options = distractors + [kw]
-                    random.shuffle(options)
+        # Phase 1: MCQs
+        for sent in sentences:
+            if len(quiz_questions) >= num_requested:
+                break
+                
+            keywords = extract_keywords(sent)
+            if not keywords:
+                continue
+                
+            # Pick a lucky keyword
+            random.shuffle(keywords)
+            for kw_info in keywords:
+                word = kw_info[0]
+                if word.lower() in used_words:
+                    continue
                     
-                    questions.append({
-                        "type": "mcq",
-                        "question": sent.replace(kw, "__________"),
-                        "options": options,
-                        "answer": kw,
-                        "explanation": f"The term '{kw}' correctly completes the context of this statement found in your study material."
-                    })
-                    used_sents.add(sent)
-                    mcq_count += 1
-                    break
-
-        # Generate Short Answers (2)
-        short_count = 0
-        for kw in reversed(top_keywords):
-            if short_count >= 2: break
-            for sent in sentences:
-                if kw in sent and sent not in used_sents:
-                    questions.append({
-                        "type": "short",
-                        "question": f"Based on the text, what term fits this description: '{sent.replace(kw, '...')}'?",
-                        "answer": kw,
-                        "explanation": f"This refers to {kw} as discussed in the material."
-                    })
-                    used_sents.add(sent)
-                    short_count += 1
+                mcq = generate_mcq(sent, kw_info)
+                if mcq:
+                    quiz_questions.append(mcq)
+                    used_words.add(word.lower())
                     break
         
-        # Generate Essay (1)
-        if sentences:
-            essay_sent = sentences[len(sentences)//2]
-            questions.append({
-                "type": "essay",
-                "question": f"Analyze the following concept from your notes: '{essay_sent}'. Discuss its implications and provide examples where applicable.",
-                "rubric": "Grade based on depth of analysis, correct usage of terminology, and logical structure."
-            })
-
-        return {"quiz": {"questions": questions}}
+        # Phase 2: Fill-ins / Short (if not enough MCQs)
+        # (Already handled by MCQ logic, but we could add variety here)
+        
+        return {"quiz": {"questions": quiz_questions}}
     except Exception as e:
+        print(f"Quiz Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/explain-incorrect")
 async def explain_incorrect(data: dict):
     try:
-        question = data.get("question")
-        user_answer = data.get("user_answer")
-        correct_answer = data.get("correct_answer")
+        question = data.get("question", "")
+        user_answer = data.get("user_answer", "")
+        correct_answer = data.get("correct_answer", "")
         context = data.get("context", "")
         
-        # Simple rule-based explanation
         explanation = f"You selected '{user_answer}', but the correct answer is '{correct_answer}'.\n\n"
         
-        if context:
-            explanation += f"Referencing your study notes: \"{context}\".\n\n"
+        # Extraction logic for 'Simplified Concept' notes
+        tokens = word_tokenize(question + " " + correct_answer)
+        tagged = pos_tag(tokens)
+        topic_keywords = [word for word, pos in tagged if pos.startswith('N') and len(word) > 4]
+        topic = topic_keywords[0] if topic_keywords else correct_answer
         
-        explanation += f"In the context of the study material provided, '{correct_answer}' is the precise term that fulfills the requirements of the question. "
-        explanation += "Review the relevant section to strengthen your understanding of this concept."
+        explanation += f"**AI Simplified Concept:** {topic} refers to a core element in this context. "
+        explanation += f"It is essential for understanding the relationship described in your material."
         
-        topic_query = correct_answer if correct_answer else "General knowledge"
-        safe_query = topic_query.replace(' ', '+')
+        safe_query = topic.replace(' ', '+')
         
+        # Curated Resources
         links = [
-            { "title": f"Understanding {topic_query} - Khan Academy", "url": f"https://www.khanacademy.org/search?page_search_query={safe_query}" },
-            { "title": f"{topic_query} Tutorial - YouTube", "url": f"https://www.youtube.com/results?search_query={safe_query}" },
-            { "title": f"Articles on {topic_query} - Wikipedia", "url": f"https://en.wikipedia.org/wiki/Special:Search?search={safe_query}" }
+            { 
+                "title": f"Khan Academy: Practice {topic}", 
+                "url": f"https://www.khanacademy.org/search?page_search_query={safe_query}",
+                "type": "article"
+            },
+            { 
+                "title": f"YouTube: {topic} Visual Tutorial", 
+                "url": f"https://www.youtube.com/results?search_query={safe_query}+tutorial",
+                "type": "video"
+            },
+            { 
+                "title": f"Academic Summary: {topic}", 
+                "url": f"https://en.wikipedia.org/wiki/{safe_query}",
+                "type": "pdf" 
+            }
         ]
 
         return {
             "explanation": explanation,
-            "suggestions": f"Consider reviewing introductory materials and video lectures on '{topic_query}' to strengthen your core understanding before attempting another similar quiz.",
+            "suggestions": f"Reviewing '{topic}' tutorials will help you master this specific concept.",
             "links": links
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/get-hint")
-async def get_hint(data: dict):
-    try:
-        correct_answer = data.get("correct_answer", "")
-        question = data.get("question", "")
-        
-        hint_text = ""
-        if correct_answer:
-            hint_text = f"Think about a term that starts with '{correct_answer[0]}' and has {len(correct_answer)} letters."
-        else:
-            hint_text = "Try identifying the core subject mentioned in the question."
-
-        # Generate external links for the hint
-        search_query = correct_answer if correct_answer else question[:30]
-        safe_query = search_query.replace(' ', '+')
-        
-        links = [
-            { "title": "Watch related Video", "url": f"https://www.youtube.com/results?search_query={safe_query}+explained" },
-            { "title": "Read Article", "url": f"https://en.wikipedia.org/wiki/Special:Search?search={safe_query}" }
-        ]
-
-        return {
-            "hint": hint_text,
-            "resources": links
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/reinforcement-template")
-async def reinforcement_template(data: dict):
-    """Generates a structured revision template based on quiz performance"""
-    try:
-        topic = data.get("topic", "General Study")
-        weaknesses = data.get("weaknesses", [])
-        
-        template = f"# study reinforcement: {topic}\n\n"
-        template += "## 🎯 Key Learning Objective\n"
-        template += f"Master the fundamental concepts of {topic}, specifically focusing on area(s): {', '.join(weaknesses) if weaknesses else 'core principles'}.\n\n"
-        
-        template += "## 🧠 Active Recall Questions\n"
-        for i, w in enumerate(weaknesses[:3] if weaknesses else ["primary concept", "secondary application"]):
-            template += f"{i+1}. How would you define {w} in your own words?\n"
-            template += f"{i+1}b. What is a real-world example of {w}?\n"
-            
-        template += "\n## 📝 Targeted Notes Area\n"
-        template += "> Use this space to summarize the logic behind your previous incorrect answers.\n\n\n"
-        
-        template += "## 🚀 Next Steps\n"
-        template += "1. Review the Wikipedia articles linked in your hints.\n"
-        template += "2. Explain this topic to a friend (Feynman Technique).\n"
-        template += "3. Re-take the AI quiz in 24 hours (Spaced Repetition).\n"
-
-        return {"template": template}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/evaluate-essay")
-async def evaluate_essay(data: dict):
-    try:
-        question = data.get("question", "")
-        student_answer = data.get("student_answer", "")
-        context = data.get("context", "") # The study material text
-        
-        if not student_answer:
-            return {
-                "score": 0,
-                "feedback": "No answer provided.",
-                "relevance": "None",
-                "model_answer_highlights": "Please provide an answer for evaluation."
-            }
-
-        # NLTK based evaluation
-        tokens_q = nltk.word_tokenize(question.lower())
-        tokens_a = nltk.word_tokenize(student_answer.lower())
-        tokens_c = nltk.word_tokenize(context[:5000].lower())
-
-        # Extract keywords using NLTK for better relevance scoring
-        def extract_nouns(tokens):
-            tagged = nltk.pos_tag(tokens)
-            return {word for word, pos in tagged if pos.startswith('N') and len(word) > 4}
-
-        context_keywords = extract_nouns(tokens_c)
-        answer_keywords = extract_nouns(tokens_a)
-        
-        matching_keywords = context_keywords.intersection(answer_keywords)
-        relevance_score = len(matching_keywords) / max(len(answer_keywords), 1)
-
-        # 2. Basic Feedback logic
-        if relevance_score > 0.4:
-            score = 85
-            feedback = "excellent! Your answer demonstrates a strong understanding of the material and uses appropriate terminology."
-        elif relevance_score > 0.15:
-            score = 60
-            feedback = "Good start, but you could include more specific details from the study material to strengthen your argument."
-        else:
-            score = 25
-            feedback = "Your answer doesn't seem to align well with the provided study material. Try to incorporate key terms and concepts from your notes."
-
-        # 3. Generate "Model Highlights" based on context keywords related to the question
-        question_keywords = extract_nouns(tokens_q)
-        suggested_terms = [kw for kw in context_keywords if any(qk in kw or kw in qk for qk in question_keywords)][:5]
-        
-        if not suggested_terms:
-            suggested_terms = list(context_keywords)[:5]
-
-        return {
-            "score": score,
-            "feedback": feedback,
-            "relevance": "High" if relevance_score > 0.4 else "Medium" if relevance_score > 0.15 else "Low",
-            "matching_concepts": list(matching_keywords)[:10],
-            "model_answer_highlights": f"A complete answer should focus on: {', '.join(suggested_terms)}. Refer back to these specific terms in your material."
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/ocr-evaluate")
-async def ocr_evaluate(file: UploadFile = File(...)):
-    try:
-        from PIL import Image
-        import pytesseract
-        
-        content = await file.read()
-        image = Image.open(io.BytesIO(content))
-        text = pytesseract.image_to_string(image)
-        
-        # Simple rule-based evaluation
-        word_count = len(text.split())
-        quality = "Good" if word_count > 50 else "Short"
-        
-        return {
-            "text": text,
-            "evaluation": {
-                "word_count": word_count,
-                "readability": quality,
-                "feedback": "Handwritten notes processed. Ensure clarity for better evaluation."
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR Error: {str(e)}")
 
 @app.post("/analyze-weakness")
 async def analyze_weakness(data: dict):
     try:
         incorrect_data = data.get("incorrect_data", [])
         if not incorrect_data:
-            return {"weaknesses": [], "recommendations": "No sufficient data to identify weaknesses yet."}
+            return {"weaknesses": [], "recommendations": "Practice more to see your analytics!"}
             
         all_text = " ".join([d.get("question", "") + " " + d.get("correct_answer", "") for d in incorrect_data])
         
-        keywords = get_keywords(all_text)
+        # Use existing POS logic for consistency
+        tokens = word_tokenize(all_text)
+        tagged = pos_tag(tokens)
+        keywords = [word for word, pos in tagged if pos in ('NN', 'NNS', 'NNP') and len(word) > 4]
             
         common = Counter(keywords).most_common(3)
-        
         weaknesses = [k[0] for k in common]
         
         return {

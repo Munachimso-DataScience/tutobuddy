@@ -15,6 +15,11 @@ export const logActivity = async (req: any, res: any) => {
             logDetails = logDetails.substring(0, 4900) + '... (truncated)';
         }
 
+        if (!DATABASE_ID || !COLLECTIONS.ACTIVITY) {
+            console.error('Configuration Error: DATABASE_ID or COLLECTIONS.ACTIVITY is missing');
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+
         const log = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.ACTIVITY,
@@ -25,28 +30,44 @@ export const logActivity = async (req: any, res: any) => {
                 details: logDetails,
                 timestamp: new Date().toISOString()
             }
-        );
+        ).catch(err => {
+            console.error('Appwrite createDocument Error (Activity):', err.message);
+            throw err;
+        });
 
         console.log(`Activity logged with ID: ${log.$id}`);
 
+        let finalStreak = 0;
         // Update last_active and check streak
         try {
             const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
-            const lastActive = profile.last_active ? new Date(profile.last_active) : new Date(0);
+            
+            // Appwrite returns datetime as string or object. Convert safely.
+            const lastActiveStr = profile.last_active;
+            const lastActive = lastActiveStr ? new Date(lastActiveStr) : new Date(0);
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const lastDay = new Date(lastActive);
+            lastDay.setHours(0, 0, 0, 0);
 
-            const diffTime = Math.abs(today.getTime() - lastActive.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            // Calculate day difference
+            const diffTime = today.getTime() - lastDay.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
             let newStreak = profile.current_streak || 0;
             if (diffDays === 1) {
                 newStreak += 1;
             } else if (diffDays > 1) {
                 newStreak = 1;
+            } else if (diffDays === 0) {
+                // Already active today, keep streak
             }
+            
+            finalStreak = newStreak;
 
             await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
-                last_active: today.toISOString(),
+                last_active: new Date().toISOString(),
                 current_streak: newStreak
             });
             console.log(`Streak updated to ${newStreak} for user ${userId}`);
@@ -54,10 +75,14 @@ export const logActivity = async (req: any, res: any) => {
             console.warn(`Non-critical: Could not update profile for user ${userId}:`, profileError.message);
         }
 
-        res.status(201).json({ log, streak: 0 });
+        res.status(201).json({ log, streak: finalStreak });
     } catch (error: any) {
         console.error('CRITICAL Activity Log Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: error.message || 'Unknown error', 
+            details: error.response?.data || 'No response data',
+            stack: error.stack
+        });
     }
 };
 
