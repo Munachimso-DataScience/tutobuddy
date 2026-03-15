@@ -14,6 +14,7 @@ export const createCourse = async (req: any, res: any) => {
         // 1. Create Course
         const courseData: any = {
             title: title,
+            name: title,
             description: description || '',
             code,
             student_id: studentId,

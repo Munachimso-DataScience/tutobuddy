@@ -30,6 +30,7 @@ const schema = [
         name: 'Courses',
         attributes: [
             { key: 'title', type: 'string', size: 255, required: false },
+            { key: 'name', type: 'string', size: 255, required: false },
             { key: 'description', type: 'string', size: 5000, required: false },
             { key: 'code', type: 'string', size: 50, required: false },
             { key: 'student_id', type: 'string', size: 255, required: false },
