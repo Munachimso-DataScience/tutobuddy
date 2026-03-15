@@ -1,4 +1,7 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TutorBuddy Frontend
+
+> [!IMPORTANT]
+> This is just the frontend of the TutorBuddy AI Study Companion. For full installation instructions of the entire system (Backend, Frontend, and AI Service), please refer to the **[Root README](../README.md)**.
 
 ## Getting Started
 
