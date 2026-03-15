@@ -164,7 +164,7 @@ export default function CoursesPage() {
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
-                            <form onSubmit={handleAddCourse} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                            <form onSubmit={handleAddCourse} className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Name</label>
                                     <input

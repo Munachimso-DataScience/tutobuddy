@@ -128,11 +128,25 @@ async function fixSchema() {
             collection = await databases.createCollection(DATABASE_ID, col.id, col.name);
         }
 
-        const existingAttrs = collection.attributes.map((a: any) => a.key);
+        const attributes = collection.attributes;
+        const existingAttrMap = attributes.reduce((acc: any, attr: any) => {
+            acc[attr.key] = attr;
+            return acc;
+        }, {});
 
         for (const attr of col.attributes) {
-            if (existingAttrs.includes(attr.key)) {
-                console.log(`  Attribute "${attr.key}" already exists in "${col.id}".`);
+            const existing = existingAttrMap[attr.key];
+            
+            if (existing) {
+                // Check if we need to update size
+                if (attr.type === 'string' && attr.size && existing.size < attr.size) {
+                    console.log(`  Updating attribute "${attr.key}" size in "${col.id}" from ${existing.size} to ${attr.size}...`);
+                    try {
+                        await databases.updateStringAttribute(DATABASE_ID, col.id, attr.key, attr.size, attr.required, attr.default as any);
+                    } catch (err: any) {
+                        console.error(`  Failed to update "${attr.key}": ${err.message}`);
+                    }
+                }
                 continue;
             }
 
