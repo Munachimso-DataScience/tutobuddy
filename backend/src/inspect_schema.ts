@@ -18,7 +18,7 @@ async function inspect() {
         for (const col of collections.collections) {
             console.log(`\nCollection: ${col.name} (${col.$id})`);
             const details = await databases.getCollection(DATABASE_ID, col.$id);
-            for (const attr of details.attributes) {
+            for (const attr of details.attributes as any[]) {
                 console.log(` - ${attr.key}: ${attr.type} (Required: ${attr.required})`);
             }
         }
