@@ -6,12 +6,22 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    // Priority: 1. Internal Render Networking 2. Public URL 3. Localhost
-    // If running on Render, use the service name 'tutobuddy-ai'
-    if (process.env.RENDER === 'true') return 'http://tutobuddy-ai:8000';
+    let url = 'http://localhost:8000';
+    let source = 'default local';
+
+    // 1. Check if AI_SERVICE_URL is explicitly set
+    if (process.env.AI_SERVICE_URL) {
+        url = process.env.AI_SERVICE_URL;
+        source = 'environment variable';
+    } else if (process.env.RENDER === 'true') {
+        // 2. Fallback for Render Internal Networking
+        url = 'http://tutobuddy-ai:8000';
+        source = 'Render internal networking';
+    }
     
-    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-    return url.startsWith('http') ? url : `http://${url}`;
+    const finalUrl = url.startsWith('http') ? url : `http://${url}`;
+    console.log(`AI Service URL: ${finalUrl} (source: ${source})`);
+    return finalUrl;
 };
 
 export const generateQuiz = async (req: any, res: any) => {

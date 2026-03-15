@@ -22,7 +22,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: "npm install --legacy-peer-deps && npm run build"
-    startCommand: "npm start"
+    startCommand: "npm run setup-db && npm start"
     envVars:
       - key: AI_SERVICE_URL
         sync: false # Set to the public URL of tutobuddy-ai after first deploy
