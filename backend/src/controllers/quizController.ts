@@ -6,25 +6,26 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    // 1. Check if AI_SERVICE_URL is explicitly set (e.g., local .env)
-    if (process.env.AI_SERVICE_URL) {
+    // 1. Priority: Explicitly set URL (Dashboard or Local .env)
+    if (process.env.AI_SERVICE_URL && process.env.AI_SERVICE_URL !== 'http://tutobuddy-ai:8000') {
         const url = process.env.AI_SERVICE_URL;
         const finalUrl = url.startsWith('http') ? url : `http://${url}`;
-        console.log(`AI Service URL: ${finalUrl} (source: environment variable)`);
+        console.log(`AI Service URL: ${finalUrl} (source: AI_SERVICE_URL env)`);
         return finalUrl;
     }
 
-    // 2. If on Render, try internal networking first
+    // 2. Fallback: If on Render, try to form a URL from common patterns
     if (process.env.RENDER === 'true') {
-        const url = 'http://tutobuddy-ai:8000';
-        console.log(`AI Service URL: ${url} (source: Render internal networking)`);
-        return url;
+        // Try internal name first as fallback, but add .onrender.com which sometimes resolves better internally
+        const internalUrl = 'https://tutobuddy-ai.onrender.com'; 
+        console.log(`AI Service URL: ${internalUrl} (source: Render public fallback)`);
+        return internalUrl;
     }
     
-    // 3. Last fallback
-    const url = 'http://localhost:8000';
-    console.log(`AI Service URL: ${url} (source: default local)`);
-    return url;
+    // 3. Last fallback: Localhost
+    const localUrl = 'http://localhost:8000';
+    console.log(`AI Service URL: ${localUrl} (source: default local)`);
+    return localUrl;
 };
 
 export const generateQuiz = async (req: any, res: any) => {
