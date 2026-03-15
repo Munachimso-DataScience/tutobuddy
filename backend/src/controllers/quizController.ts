@@ -6,9 +6,12 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    // Try to use internal Render networking first or fallback
-    const publicUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-    return publicUrl.startsWith('http') ? publicUrl : `http://${publicUrl}`;
+    // Priority: 1. Internal Render Networking 2. Public URL 3. Localhost
+    // If running on Render, use the service name 'tutobuddy-ai'
+    if (process.env.RENDER === 'true') return 'http://tutobuddy-ai:8000';
+    
+    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return url.startsWith('http') ? url : `http://${url}`;
 };
 
 export const generateQuiz = async (req: any, res: any) => {
@@ -70,7 +73,7 @@ export const generateQuiz = async (req: any, res: any) => {
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
             num_questions: 5
-        }, { timeout: 45000 }); // Increase timeout for cold starts
+        }, { timeout: 60000 }); // Increase timeout for complex docs or cold starts
 
         const quizData = quizRes.data.quiz;
 

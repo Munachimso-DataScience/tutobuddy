@@ -5,12 +5,16 @@ import { ID, Query } from 'node-appwrite';
 export const logActivity = async (req: any, res: any) => {
     try {
         const { type, details } = req.body;
+        
+        if (!req.user || !req.user.$id) {
+            console.error('Auth Error: No user in request');
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const userId = req.user.$id;
 
         console.log(`Logging activity: ${type} for user: ${userId}`);
         
-        // Truncate details if they are too long for the 5000 character limit in DB
-        let logDetails = JSON.stringify(details);
+        let logDetails = details ? JSON.stringify(details) : '{}';
         if (logDetails.length > 4900) {
             logDetails = logDetails.substring(0, 4900) + '... (truncated)';
         }
@@ -35,20 +39,14 @@ export const logActivity = async (req: any, res: any) => {
             throw err;
         });
 
-        console.log(`Activity logged with ID: ${log.$id}`);
-
         let finalStreak = 0;
-        // Update last_active and check streak
         try {
             const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
-            
             const lastActiveStr = profile.last_active;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            let currentStreak = Number(profile.current_streak);
-            if (isNaN(currentStreak)) currentStreak = 0;
-
+            let currentStreak = Number(profile.current_streak) || 0;
             let newStreak = currentStreak;
             
             if (lastActiveStr) {
@@ -76,7 +74,6 @@ export const logActivity = async (req: any, res: any) => {
                 last_active: new Date().toISOString(),
                 current_streak: finalStreak
             });
-            console.log(`Streak updated: ${finalStreak}`);
         } catch (profileError: any) {
             console.warn(`Non-critical profile error: ${profileError.message}`);
         }
@@ -86,9 +83,7 @@ export const logActivity = async (req: any, res: any) => {
         console.error('CRITICAL Activity Log Error:', error);
         res.status(500).json({ 
             error: 'Failed to log activity',
-            message: error.message,
-            stack: error.stack,
-            at: new Date().toISOString()
+            message: error.message
         });
     }
 };
@@ -100,14 +95,12 @@ export const getStats = async (req: any, res: any) => {
         try {
             profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
         } catch (e) {
-            // Default profile if not found
             profile = {
                 current_streak: 0,
                 last_active: new Date().toISOString()
             };
         }
 
-        // Get activity counts for the last 7 days
         const lastWeek = new Date();
         lastWeek.setDate(lastWeek.getDate() - 7);
 
