@@ -2,9 +2,13 @@ import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import axios from 'axios';
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const getAiUrl = () => {
+    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return url.startsWith('http') ? url : `http://${url}`;
+};
 
 export const evaluateEssay = async (req: any, res: any) => {
+    const AI_URL = getAiUrl();
     try {
         const { question, studentAnswer, materialId } = req.body;
         
@@ -18,7 +22,7 @@ export const evaluateEssay = async (req: any, res: any) => {
         // Since we don't have the text stored in the DB document yet, we'll assume the AI service
         // can handle a simplified evaluation or we provide the material info.
         
-        const response = await axios.post(`${AI_SERVICE_URL}/evaluate-essay`, {
+        const response = await axios.post(`${AI_URL}/evaluate-essay`, {
             question,
             student_answer: studentAnswer,
             context: material.title // Fallback to title if full text isn't available, but ideally we'd pass text

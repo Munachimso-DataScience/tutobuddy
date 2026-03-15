@@ -4,9 +4,13 @@ import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import { Query } from 'node-appwrite';
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const getAiUrl = () => {
+    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return url.startsWith('http') ? url : `http://${url}`;
+};
 
 export const getWeaknessAnalysis = async (req: Request, res: Response) => {
+    const AI_URL = getAiUrl();
     try {
         const studentId = (req as any).user.$id;
 
@@ -47,7 +51,7 @@ export const getWeaknessAnalysis = async (req: Request, res: Response) => {
 
         // 2. Call AI Service
         try {
-            const aiResponse = await axios.post(`${AI_SERVICE_URL}/analyze-weakness`, {
+            const aiResponse = await axios.post(`${AI_URL}/analyze-weakness`, {
                 incorrect_data: incorrectData
             });
             res.status(200).json(aiResponse.data);

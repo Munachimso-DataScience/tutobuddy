@@ -48,7 +48,7 @@ const schema = [
             { key: 'file_id', type: 'string', size: 255, required: false },
             { key: 'course_id', type: 'string', size: 255, required: false },
             { key: 'type', type: 'string', size: 50, required: false },
-            { key: 'content', type: 'string', size: 15000, required: false },
+            { key: 'content', type: 'string', size: 65000, required: false },
             { key: 'category', type: 'string', size: 255, required: false, default: 'General' },
             { key: 'processed', type: 'boolean', required: false, default: false },
             { key: 'created_at', type: 'datetime', required: false }
@@ -62,7 +62,7 @@ const schema = [
             { key: 'material_id', type: 'string', size: 255, required: false },
             { key: 'course_id', type: 'string', size: 255, required: false },
             { key: 'title', type: 'string', size: 255, required: false },
-            { key: 'content', type: 'string', size: 15000, required: false },
+            { key: 'content', type: 'string', size: 65000, required: false },
             { key: 'score', type: 'integer', required: false, default: 0 },
             { key: 'total_questions', type: 'integer', required: false, default: 0 },
             { key: 'date_taken', type: 'datetime', required: false },

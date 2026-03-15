@@ -1,12 +1,16 @@
 import axios from 'axios';
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const getAiUrl = () => {
+    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return url.startsWith('http') ? url : `http://${url}`;
+};
 
 export const getExplanation = async (req: any, res: any) => {
+    const AI_URL = getAiUrl();
     try {
         const { question, userAnswer, correctAnswer, context } = req.body;
         
-        const response = await axios.post(`${AI_SERVICE_URL}/explain-incorrect`, {
+        const response = await axios.post(`${AI_URL}/explain-incorrect`, {
             question,
             user_answer: userAnswer,
             correct_answer: correctAnswer,
@@ -20,10 +24,11 @@ export const getExplanation = async (req: any, res: any) => {
 };
 
 export const getHint = async (req: any, res: any) => {
+    const AI_URL = getAiUrl();
     try {
         const { question, correct_answer } = req.body;
         
-        const response = await axios.post(`${AI_SERVICE_URL}/get-hint`, {
+        const response = await axios.post(`${AI_URL}/get-hint`, {
             question,
             correct_answer
         });

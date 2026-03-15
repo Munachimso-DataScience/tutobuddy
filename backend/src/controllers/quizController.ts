@@ -5,12 +5,18 @@ import axios from 'axios';
 import fs from 'fs';
 import fetch from 'node-fetch';
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const getAiUrl = () => {
+    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    return url.startsWith('http') ? url : `http://${url}`;
+};
 
 export const generateQuiz = async (req: any, res: any) => {
+    const AI_URL = getAiUrl();
     try {
         const { materialId } = req.body;
         const userId = req.user.$id;
+
+        console.log(`Generating quiz for material: ${materialId} using AI at ${AI_URL}`);
 
         // 1. Get material file from database to get file_id and course_id
         const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
@@ -34,7 +40,7 @@ export const generateQuiz = async (req: any, res: any) => {
             });
 
             // 4. Extract text (using AI service with fetch)
-            const extractionRes = await fetch(`${AI_SERVICE_URL}/extract-text`, {
+            const extractionRes = await fetch(`${AI_URL}/extract-text`, {
                 method: 'POST',
                 body: formData as any,
                 headers: formData.getHeaders()
@@ -52,7 +58,7 @@ export const generateQuiz = async (req: any, res: any) => {
         }
 
         // 5. Generate Quiz
-        const quizRes = await axios.post(`${AI_SERVICE_URL}/generate-quiz`, {
+        const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
             num_questions: 5
         });
