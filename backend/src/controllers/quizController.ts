@@ -35,21 +35,27 @@ export const generateQuiz = async (req: any, res: any) => {
         const userId = req.user.$id;
 
         console.log(`Using Database: ${DATABASE_ID}, Quiz Collection: ${COLLECTIONS.QUIZZES}`);
-        console.log(`Generating quiz for material: ${materialId} using AI at ${AI_URL}`);
-
+        
         // 1. Get material file from database to get file_id and course_id
         const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
-        
         let text = '';
 
         if (material.content) {
             // Use pasted text directly
             text = material.content;
         } else if (material.file_id && material.file_id !== 'pasted_text') {
-            // 2. Get file content from storage (ArrayBuffer)
+            // 2. WARM UP: Ping AI health check first (Render Free Tier can take 30s to wake up)
+            console.log('Waking up AI service...');
+            try {
+                // First ping to wake it up
+                await axios.get(`${AI_URL}/health`, { timeout: 30000 }).catch(() => {});
+            } catch (hwError) {}
+
+            // 3. Get file content from storage (ArrayBuffer)
+            console.log(`Downloading file ${material.file_id} from Appwrite...`);
             const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
             
-            // 3. Prepare for AI service
+            // 4. Prepare for AI service
             const formData = new (require('form-data'))();
             const buffer = Buffer.from(fileContent);
 
@@ -58,26 +64,29 @@ export const generateQuiz = async (req: any, res: any) => {
                 contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
             });
 
-            // 4. Extract text (using axios for better node compatibility)
-            try {
-                console.log(`Sending file to AI for extraction...`);
-                const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
-                    headers: {
-                        ...formData.getHeaders()
-                    },
-                    maxContentLength: Infinity,
-                    maxBodyLength: Infinity,
-                    timeout: 120000 // 120 seconds to match Render timeout
-                });
-                text = extractionRes.data.text;
-                console.log(`Extraction successful. Received ${text.length} characters.`);
-            } catch (extErr: any) {
-                console.error('AI EXTRACTION FAILED:', {
-                    status: extErr.response?.status,
-                    data: extErr.response?.data,
-                    message: extErr.message
-                });
-                throw new Error(`AI Extraction failed: ${extErr.response?.data?.detail || extErr.message}`);
+            // 5. Extract text with RETRY logic
+            let retries = 2;
+            while (retries >= 0) {
+                try {
+                    console.log(`Sending file to AI for extraction (Retries left: ${retries})...`);
+                    const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
+                        headers: { ...formData.getHeaders() },
+                        maxContentLength: Infinity,
+                        maxBodyLength: Infinity,
+                        timeout: 120000 
+                    });
+                    text = extractionRes.data.text;
+                    console.log(`Extraction successful. Received ${text.length} characters.`);
+                    break;
+                } catch (extErr: any) {
+                    if (retries === 0) {
+                        console.error('AI EXTRACTION FAILED PERMANENTLY:', extErr.message);
+                        throw new Error(`AI Extraction failed: ${extErr.response?.data?.detail || extErr.message}`);
+                    }
+                    console.warn(`Extraction failed, retrying... (${extErr.message})`);
+                    retries--;
+                    await new Promise(r => setTimeout(r, 5000)); // Wait 5s before retry
+                }
             }
         } else {
             throw new Error('No content or file found for this material');
@@ -90,11 +99,11 @@ export const generateQuiz = async (req: any, res: any) => {
 
         console.log(`Sending ${text.length} characters of text to AI for quiz generation...`);
 
-        // 5. Generate Quiz
+        // 6. Generate Quiz
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
             num_questions: 5
-        }, { timeout: 60000 }); // Increase timeout for complex docs or cold starts
+        }, { timeout: 60000 }); 
 
         const quizData = quizRes.data.quiz;
 
@@ -102,7 +111,7 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error('AI Service returned invalid quiz data format');
         }
 
-        // 6. Store in Appwrite
+        // 7. Store in Appwrite
         console.log(`Saving quiz to collection: ${COLLECTIONS.QUIZZES}...`);
         const quizDoc = await databases.createDocument(
             DATABASE_ID,
@@ -124,7 +133,7 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error(`Database rejected the quiz: ${dbErr.message}`);
         });
 
-        // 7. Update course completion tracking
+        // 8. Update course completion tracking
         try {
             const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, material.course_id);
             const newProgress = Math.min((course.progress || 0) + 5, 100);
