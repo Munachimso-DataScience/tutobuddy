@@ -60,14 +60,17 @@ export const generateQuiz = async (req: any, res: any) => {
 
             // 4. Extract text (using axios for better node compatibility)
             try {
+                console.log(`Sending file to AI for extraction...`);
                 const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
                     headers: {
                         ...formData.getHeaders()
                     },
                     maxContentLength: Infinity,
-                    maxBodyLength: Infinity
+                    maxBodyLength: Infinity,
+                    timeout: 120000 // 120 seconds to match Render timeout
                 });
                 text = extractionRes.data.text;
+                console.log(`Extraction successful. Received ${text.length} characters.`);
             } catch (extErr: any) {
                 console.error('AI EXTRACTION FAILED:', {
                     status: extErr.response?.status,
