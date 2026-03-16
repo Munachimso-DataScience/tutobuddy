@@ -208,6 +208,34 @@ def generate_mcq(sentence, target_keyword_info):
         "score": q_score
     }
 
+def generate_essay(sentence):
+    """Generate an essay/short answer question from a sentence"""
+    keywords = extract_keywords(sentence)
+    if not keywords:
+        return None
+    
+    # Pick a noun to be the subject
+    subjects = [w for w, pos in keywords if pos.startswith('N')]
+    if not subjects:
+        subjects = [keywords[0][0]]
+    
+    subject = subjects[0]
+    
+    prompts = [
+        f"Explain the significance of {subject} in the context of your study material.",
+        f"Describe how {subject} relates to the overall concepts discussed in this section.",
+        f"Discuss the role and impact of {subject} based on the provided text.",
+        f"Summarize the key points regarding {subject} and explain its importance."
+    ]
+    
+    return {
+        "type": "essay",
+        "question": random.choice(prompts),
+        "context": sentence,
+        "answer": sentence, # Context serves as the reference answer
+        "explanation": f"This question tests your deep understanding of '{subject}'. Your answer should be compared against the following reference from your material: \"{sentence}\""
+    }
+
 # --- API Endpoints ---
 
 @app.get("/")
@@ -272,18 +300,20 @@ async def extract_text(file: UploadFile = File(...)):
 async def generate_quiz(data: dict):
     try:
         text = data.get("text", "")
-        num_requested = data.get("num_questions", 5)
+        num_requested = data.get("num_questions", 35) # Default total 35
+        num_mcq = data.get("num_mcq", 30)
+        num_essay = data.get("num_essay", 5)
+        
         print(f"--- Quiz Generation Request Received ---")
-        print(f"Text length: {len(text)} characters")
+        print(f"Text length: {len(text)} characters. Targets: {num_mcq} MCQ, {num_essay} Essay")
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
 
-        # Truncate extremely large text to prevent memory/timeout issues on free tier
-        # 50,000 characters is plenty for a 5-question quiz.
-        if len(text) > 50000:
-            print(f"Truncating text from {len(text)} to 50,000 chars for performance.")
-            text = text[:50000]
+        # Increased limit slightly for larger question sets
+        if len(text) > 60000:
+            print(f"Truncating text from {len(text)} to 60,000 chars for performance.")
+            text = text[:60000]
             
         sentences = preprocess_text(text)
         if not sentences:
@@ -296,19 +326,17 @@ async def generate_quiz(data: dict):
         
         # Phase 1: MCQs
         for sent in sentences:
-            if len(quiz_questions) >= num_requested:
+            if len([q for q in quiz_questions if q['type'] == 'mcq']) >= num_mcq:
                 break
                 
             keywords = extract_keywords(sent)
-            if not keywords:
-                continue
+            if not keywords: continue
                 
             # Pick a lucky keyword
             random.shuffle(keywords)
             for kw_info in keywords:
                 word = kw_info[0]
-                if word.lower() in used_words:
-                    continue
+                if word.lower() in used_words: continue
                     
                 mcq = generate_mcq(sent, kw_info)
                 if mcq:
@@ -316,9 +344,37 @@ async def generate_quiz(data: dict):
                     used_words.add(word.lower())
                     break
         
-        # Phase 2: Fill-ins / Short (if not enough MCQs)
-        # (Already handled by MCQ logic, but we could add variety here)
+        # Phase 2: Essays
+        essay_candidates = [s for s in sentences if len(s.split()) >= 12] # Lowered from 15 to 12 words
+        random.shuffle(essay_candidates)
         
+        current_essays = 0
+        for sent in essay_candidates:
+            if current_essays >= num_essay:
+                break
+                
+            # Avoid using same sentences as MCQs if possible, but relax this if we don't have enough candidates
+            is_duplicate = any(sent in q.get('question', '') or sent in q.get('context', '') for q in quiz_questions)
+            if is_duplicate and len(essay_candidates) > num_essay * 2:
+                continue
+                
+            essay = generate_essay(sent)
+            if essay:
+                quiz_questions.append(essay)
+                current_essays += 1
+        
+        # Phase 3: DESPERATION FALLBACK (if we still don't have enough essays)
+        if current_essays < num_essay:
+            print(f"Desperation fallback for essays: only found {current_essays}/{num_essay}")
+            for sent in sentences: # Try any sentence now
+                if current_essays >= num_essay: break
+                if any(q.get('type') == 'essay' and q.get('context') == sent for q in quiz_questions): continue
+                
+                essay = generate_essay(sent)
+                if essay:
+                    quiz_questions.append(essay)
+                    current_essays += 1
+
         return {"quiz": {"questions": quiz_questions}}
     except Exception as e:
         print(f"Quiz Generation Error: {e}")
@@ -395,3 +451,54 @@ async def analyze_weakness(data: dict):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/evaluate-essay")
+async def evaluate_essay(data: dict):
+    try:
+        question = data.get("question", "")
+        student_answer = data.get("student_answer", "")
+        context = data.get("context", "") # Reference answer or context
+        
+        if not student_answer or len(student_answer) < 5:
+            return {
+                "score": 0,
+                "relevance": "None",
+                "feedback": "Your answer is too short to be evaluated. Please provide a more detailed explanation.",
+                "model_answer_highlights": ""
+            }
+
+        # Simple similarity check
+        context_words = set(word_tokenize(context.lower()))
+        student_words = set(word_tokenize(student_answer.lower()))
+        
+        overlap = student_words.intersection(context_words)
+        stop_words = set(['the', 'a', 'is', 'are', 'in', 'at', 'on', 'of', 'and', 'for', 'with', 'this', 'that'])
+        meaningful_overlap = [w for w in overlap if len(w) > 3 and w not in stop_words]
+        
+        score = min(len(meaningful_overlap) * 25, 100) 
+        relevance = "High" if score >= 75 else "Medium" if score >= 40 else "Low"
+        
+        feedback = "AI Evaluation: "
+        if meaningful_overlap:
+            feedback += f"Your answer correctly identified key terms such as: {', '.join(meaningful_overlap[:3])}. "
+        
+        if score >= 75:
+            feedback += "Excellent! You have a strong grasp of this concept."
+        elif score >= 40:
+            feedback += "Good effort. You covered some basic concepts but could improve by including more details."
+        else:
+            feedback += "Your answer is too general. Try to incorporate more specific terminology from the text."
+
+        return {
+            "score": score,
+            "relevance": relevance,
+            "feedback": feedback,
+            "model_answer_highlights": ", ".join(meaningful_overlap[:5])
+        }
+    except Exception as e:
+        print(f"Essay Evaluation Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

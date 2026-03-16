@@ -5,12 +5,13 @@ import { account, databases } from '@/lib/appwrite';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, GraduationCap, BookOpen, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, GraduationCap, BookOpen, Loader2, Eye, EyeOff } from 'lucide-react';
 import { ID as AppwriteID } from 'appwrite';
 
 export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [fullName, setFullName] = useState('');
     const [school, setSchool] = useState('');
     const [course, setCourse] = useState('');
@@ -143,14 +144,21 @@ export default function RegisterPage() {
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             required
                             minLength={8}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            className="appearance-none rounded-lg relative block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             placeholder="Password (min 8 chars)"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+                        >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
                     </div>
 
                     <button

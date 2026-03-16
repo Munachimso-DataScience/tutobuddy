@@ -78,9 +78,10 @@ export default function CourseDetailsPage() {
             setIsQuizOpen(true);
             toast.success('AI Quiz prepared successfully!');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to generate quiz. Try again.';
+            const errorData = error.response?.data;
+            const errorMessage = errorData?.message || errorData?.error || error.message || 'Failed to generate quiz. Try again.';
             toast.error(errorMessage);
-            console.error('Quiz Generation Error Details:', error.response?.data);
+            console.error('Quiz Generation Error Details:', errorData || error);
         } finally {
             setGeneratingQuiz(false);
         }

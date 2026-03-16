@@ -74,7 +74,7 @@ export const generateQuiz = async (req: any, res: any) => {
                         headers: { ...formData.getHeaders() },
                         maxContentLength: Infinity,
                         maxBodyLength: Infinity,
-                        timeout: 120000 
+                        timeout: 180000 // Increased from 120s to 180s
                     });
                     text = extractionRes.data.text;
                     console.log(`Extraction successful. Received ${text.length} characters.`);
@@ -82,7 +82,7 @@ export const generateQuiz = async (req: any, res: any) => {
                 } catch (extErr: any) {
                     if (retries === 0) {
                         console.error('AI EXTRACTION FAILED PERMANENTLY:', extErr.message);
-                        throw new Error(`AI Extraction failed: ${extErr.response?.data?.detail || extErr.message}`);
+                        throw new Error(`AI Extraction failed: ${extErr.response?.data?.detail || extErr.message} (Timeout set to 180s)`);
                     }
                     console.warn(`Extraction failed, retrying... (${extErr.message})`);
                     retries--;
@@ -98,31 +98,34 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error(`The study material is too short to generate a high-quality quiz (found ${text?.length || 0} characters). Please provide more content.`);
         }
 
-        console.log(`Sending ${text.length} characters of text to AI for quiz generation...`);
+        console.log(`Requesting 30 MCQs and 5 Essays from AI for ${text.length} chars...`);
 
-        // 6. Generate Quiz
+        // 6. Generate Quiz (Higher timeout for larger question set: 5 minutes)
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
-            num_questions: 5
-        }, { timeout: 60000 }); 
+            num_mcq: 30,
+            num_essay: 5,
+            num_questions: 35
+        }, { timeout: 300000 }); 
 
         const quizData = quizRes.data.quiz;
 
-        if (!quizData || !quizData.questions) {
-            throw new Error('AI Service returned invalid quiz data format');
+        if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+            console.error('AI Service Error Data:', quizRes.data);
+            throw new Error('AI Service failed to generate any valid questions. Try again with more content.');
         }
 
         // 7. Store in Appwrite
-        console.log(`Saving quiz to collection: ${COLLECTIONS.QUIZZES}...`);
+        console.log(`Saving quiz with ${quizData.questions.length} questions to collection: ${COLLECTIONS.QUIZZES}...`);
         const quizDoc = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.QUIZZES,
             ID.unique(),
             {
-                title: `Quiz: ${material.title || 'Extracted material'}`,
+                title: `Comprehensive Quiz: ${material.title || 'Extracted material'}`,
                 course_id: material.course_id,
                 score: 0,
-                total_questions: quizData.questions?.length || 5,
+                total_questions: quizData.questions?.length || 35,
                 date_taken: new Date().toISOString(),
                 user_id: userId,
                 material_id: materialId,
