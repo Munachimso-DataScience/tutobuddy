@@ -10,28 +10,16 @@ const getAiUrl = () => {
     const envUrl = process.env.AI_SERVICE_URL;
     const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
 
-    console.log(`AI URL Debug: envUrl=${envUrl}, isRender=${isRender}`);
-
-    // 1. If we are on Render, prioritize Internal Networking
+    // 1. If we are on Render, try to find the best URL
     if (isRender) {
-        // If no URL is set, or if the set URL is a public Render address, force the internal one
-        if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
-            const internalUrl = 'http://tutobuddy-ai:8000';
-            console.log(`[RENDER DETECTED] Forcing Internal URL: ${internalUrl}`);
-            return internalUrl;
+        // If the user hasn't set an explicit internal URL, or it looks like a public one
+        if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
+            // We'll try the name from render.yaml first
+            return 'http://tutobuddy-ai:8000';
         }
     }
 
-    // 2. Otherwise use the environment variable
-    if (envUrl) {
-        const finalUrl = envUrl.startsWith('http') ? envUrl : `http://${envUrl}`;
-        console.log(`Using explicitly set AI URL: ${finalUrl}`);
-        return finalUrl;
-    }
-
-    // 3. Last fallback: Localhost
-    console.log('No AI URL set, falling back to localhost:8000');
-    return 'http://localhost:8000';
+    return envUrl || 'http://localhost:8000';
 };
 
 export const generateQuiz = async (req: any, res: any) => {
@@ -45,23 +33,35 @@ export const generateQuiz = async (req: any, res: any) => {
         // 1. Get material file from database to get file_id and course_id
         const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
         
-        // --- 1. AI Service Warm-up (Ensures service is awake on Render Free Tier) ---
-        console.log(`Checking AI Service health at ${AI_URL}...`);
+        // --- 1. AI Service Discovery & Warm-up ---
+        let finalAiUrl = AI_URL;
         let isHealthy = false;
-        for (let i = 0; i < 3; i++) {
+        
+        // Hostnames to try (Internal, Internal with Typo, Public)
+        const candidates = [
+            AI_URL,
+            'http://tutorbuddy-ai:8000', // Common "tutor" vs "tuto" typo
+            'https://tutobuddy-ai.onrender.com', // Public fallback
+            'https://tutorbuddy-ai.onrender.com'
+        ];
+
+        console.log('Starting AI discovery phase...');
+        for (const url of candidates) {
+            if (isHealthy) break;
             try {
-                await axios.get(`${AI_URL}/health`, { timeout: 10000 });
+                console.log(`Pinging AI candidate: ${url}...`);
+                await axios.get(`${url}/health`, { timeout: 8000 });
+                finalAiUrl = url;
                 isHealthy = true;
-                console.log('AI Service is AWAKE and healthy.');
-                break;
+                console.log(`Successfully connected to AI at: ${finalAiUrl}`);
             } catch (e: any) {
-                console.warn(`AI Warm-up attempt ${i+1} failed: ${e.message}. Retrying in 5s...`);
-                await new Promise(r => setTimeout(r, 5000));
+                console.warn(`Candidate ${url} unreachable: ${e.message}`);
             }
         }
         
         if (!isHealthy) {
-            console.warn('AI Service health check failed after 3 attempts. Proceeding anyway, but errors are likely.');
+            console.error('All AI candidates failed. Services might be down or misnamed.');
+            throw new Error('AI Service not found. Please check your Render dashboard to ensure "tutobuddy-ai" is live.');
         }
 
         let text = '';
@@ -88,11 +88,11 @@ export const generateQuiz = async (req: any, res: any) => {
             while (retries >= 0) {
                 try {
                     console.log(`Sending file to AI for extraction (Retries left: ${retries})...`);
-                    const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
+                    const extractionRes = await axios.post(`${finalAiUrl}/extract-text`, formData, {
                         headers: { ...formData.getHeaders() },
                         maxContentLength: Infinity,
                         maxBodyLength: Infinity,
-                        timeout: 180000 // Increased from 120s to 180s
+                        timeout: 180000 
                     });
                     text = extractionRes.data.text;
                     console.log(`Extraction successful. Received ${text.length} characters.`);
@@ -118,11 +118,11 @@ export const generateQuiz = async (req: any, res: any) => {
 
         console.log(`Requesting 30 MCQs and 5 Essays from AI for ${text.length} chars...`);
 
-        // 5. Generate Quiz (Slightly reduced count for better success on Free Tier)
-        const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
+        // 5. Generate Quiz
+        const quizRes = await axios.post(`${finalAiUrl}/generate-quiz`, {
             text: text,
-            num_mcq: 20, // Reduced from 30
-            num_essay: 4, // Reduced from 5
+            num_mcq: 20, 
+            num_essay: 4, 
             num_questions: 24
         }, { timeout: 300000 }); 
 
