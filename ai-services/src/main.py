@@ -261,7 +261,7 @@ async def extract_text(file: UploadFile = File(...)):
             if filename.endswith('.pdf'):
                 reader = PyPDF2.PdfReader(tmp_path)
                 pages_content = []
-                # Extreme safety: 30 pages / 40k chars
+                # Extreme safety: 30 pages / 30k chars
                 page_limit = min(len(reader.pages), 35)
                 
                 total_chars = 0
@@ -269,19 +269,19 @@ async def extract_text(file: UploadFile = File(...)):
                     page_text = reader.pages[i].extract_text() or ""
                     pages_content.append(page_text)
                     total_chars += len(page_text)
-                    if total_chars > 40000: break
+                    if total_chars > 30000: break
                 
-                return {"text": "".join(pages_content)[:40000]}
+                return {"text": "".join(pages_content)[:30000]}
                 
             elif filename.endswith('.docx'):
                 import docx
                 doc = docx.Document(tmp_path)
                 text = "\n".join([para.text for para in doc.paragraphs])
-                return {"text": text[:40000]}
+                return {"text": text[:30000]}
                 
             elif filename.endswith('.txt'):
                 with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    return {"text": f.read(40000)}
+                    return {"text": f.read(30000)}
             else:
                 raise HTTPException(status_code=400, detail="Unsupported format")
         
@@ -295,7 +295,7 @@ async def extract_text(file: UploadFile = File(...)):
             # Force RAM cleanup
             gc.collect()
             await file.close()
-
+ 
 @app.post("/generate-quiz")
 async def generate_quiz(data: dict):
     try:
@@ -309,11 +309,11 @@ async def generate_quiz(data: dict):
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
-
-        # Increased limit slightly for larger question sets
-        if len(text) > 60000:
-            print(f"Truncating text from {len(text)} to 60,000 chars for performance.")
-            text = text[:60000]
+ 
+        # Lowered limit for better stability on free tier
+        if len(text) > 30000:
+            print(f"Truncating text from {len(text)} to 30,000 chars for performance.")
+            text = text[:30000]
             
         sentences = preprocess_text(text)
         if not sentences:

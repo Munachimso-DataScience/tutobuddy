@@ -7,26 +7,28 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    // 1. Priority: Explicitly set URL (Dashboard or Local .env)
-    if (process.env.AI_SERVICE_URL && process.env.AI_SERVICE_URL !== 'http://tutobuddy-ai:8000') {
-        const url = process.env.AI_SERVICE_URL;
-        const finalUrl = url.startsWith('http') ? url : `http://${url}`;
-        console.log(`AI Service URL: ${finalUrl} (source: AI_SERVICE_URL env)`);
+    const envUrl = process.env.AI_SERVICE_URL;
+    const isRender = process.env.RENDER === 'true';
+
+    // 1. If we are on Render, force Internal Networking for service-to-service communication
+    // This is the ONLY way to bypass the public 30-second gateway timeout.
+    if (isRender) {
+        // If no URL is set, or if the set URL is a public Render address, use the internal one
+        if (!envUrl || envUrl.includes('onrender.com')) {
+            console.log('Using Render Internal URL: http://tutobuddy-ai:8000');
+            return 'http://tutobuddy-ai:8000';
+        }
+    }
+
+    // 2. Otherwise or if non-render URL provided, use the environment variable
+    if (envUrl) {
+        const finalUrl = envUrl.startsWith('http') ? envUrl : `http://${envUrl}`;
+        console.log(`Using explicitly set AI URL: ${finalUrl}`);
         return finalUrl;
     }
 
-    // 2. Fallback: If on Render, use the INTERNAL service name (http://tutobuddy-ai:8000)
-    // This is faster and bypasses public gateway timeouts.
-    if (process.env.RENDER === 'true') {
-        const internalUrl = 'http://tutobuddy-ai:8000'; 
-        console.log(`AI Service URL: ${internalUrl} (source: Render internal networking)`);
-        return internalUrl;
-    }
-    
     // 3. Last fallback: Localhost
-    const localUrl = 'http://localhost:8000';
-    console.log(`AI Service URL: ${localUrl} (source: default local)`);
-    return localUrl;
+    return 'http://localhost:8000';
 };
 
 export const generateQuiz = async (req: any, res: any) => {
