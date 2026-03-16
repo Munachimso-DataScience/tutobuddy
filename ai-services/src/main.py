@@ -217,33 +217,50 @@ async def health():
 
 @app.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
+    filename = file.filename.lower()
+    print(f"--- Extraction Request: {filename} ---")
+    
     try:
+        # For text files, we can read directly
+        if filename.endswith('.txt'):
+            content = await file.read()
+            return {"text": content.decode('utf-8')[:50000]}
+            
+        # For PDF/DOCX, read into memory but carefully
         content = await file.read()
-        filename = file.filename.lower()
-        size = len(content)
-        print(f"--- Extraction Request Received ---")
-        print(f"File: {filename}, Type: {file.content_type}, Size: {size} bytes")
         
         if filename.endswith('.pdf'):
             reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text = ""
-            # Limit to first 100 pages to prevent timeouts on large docs
-            page_limit = min(len(reader.pages), 100)
+            pages_content = []
+            # Limit to first 50 pages for extreme safety on free tier
+            page_limit = min(len(reader.pages), 50)
+            
+            total_chars = 0
             for i in range(page_limit):
-                text += reader.pages[i].extract_text() or ""
-            return {"text": text}
+                page_text = reader.pages[i].extract_text() or ""
+                pages_content.append(page_text)
+                total_chars += len(page_text)
+                # Hard cap at 50k chars to prevent memory overflow
+                if total_chars > 50000:
+                    break
+            
+            # Explicitly clear large objects
+            del content
+            return {"text": "".join(pages_content)[:50000]}
+            
         elif filename.endswith('.docx'):
             import docx
             doc = docx.Document(io.BytesIO(content))
             text = "\n".join([para.text for para in doc.paragraphs])
-            return {"text": text}
-        elif filename.endswith('.txt'):
-            return {"text": content.decode('utf-8')}
+            del content
+            return {"text": text[:50000]}
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
     except Exception as e:
-        print(f"Extraction Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Extraction Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+    finally:
+        await file.close()
 
 @app.post("/generate-quiz")
 async def generate_quiz(data: dict):
