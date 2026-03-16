@@ -8,19 +8,21 @@ import fetch from 'node-fetch';
 
 const getAiUrl = () => {
     const envUrl = process.env.AI_SERVICE_URL;
-    const isRender = process.env.RENDER === 'true';
+    const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
 
-    // 1. If we are on Render, force Internal Networking for service-to-service communication
-    // This is the ONLY way to bypass the public 30-second gateway timeout.
+    console.log(`AI URL Debug: envUrl=${envUrl}, isRender=${isRender}`);
+
+    // 1. If we are on Render, prioritize Internal Networking
     if (isRender) {
-        // If no URL is set, or if the set URL is a public Render address, use the internal one
-        if (!envUrl || envUrl.includes('onrender.com')) {
-            console.log('Using Render Internal URL: http://tutobuddy-ai:8000');
-            return 'http://tutobuddy-ai:8000';
+        // If no URL is set, or if the set URL is a public Render address, force the internal one
+        if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+            const internalUrl = 'http://tutobuddy-ai:8000';
+            console.log(`[RENDER DETECTED] Forcing Internal URL: ${internalUrl}`);
+            return internalUrl;
         }
     }
 
-    // 2. Otherwise or if non-render URL provided, use the environment variable
+    // 2. Otherwise use the environment variable
     if (envUrl) {
         const finalUrl = envUrl.startsWith('http') ? envUrl : `http://${envUrl}`;
         console.log(`Using explicitly set AI URL: ${finalUrl}`);
@@ -28,6 +30,7 @@ const getAiUrl = () => {
     }
 
     // 3. Last fallback: Localhost
+    console.log('No AI URL set, falling back to localhost:8000');
     return 'http://localhost:8000';
 };
 
@@ -41,6 +44,26 @@ export const generateQuiz = async (req: any, res: any) => {
         
         // 1. Get material file from database to get file_id and course_id
         const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
+        
+        // --- 1. AI Service Warm-up (Ensures service is awake on Render Free Tier) ---
+        console.log(`Checking AI Service health at ${AI_URL}...`);
+        let isHealthy = false;
+        for (let i = 0; i < 3; i++) {
+            try {
+                await axios.get(`${AI_URL}/health`, { timeout: 10000 });
+                isHealthy = true;
+                console.log('AI Service is AWAKE and healthy.');
+                break;
+            } catch (e: any) {
+                console.warn(`AI Warm-up attempt ${i+1} failed: ${e.message}. Retrying in 5s...`);
+                await new Promise(r => setTimeout(r, 5000));
+            }
+        }
+        
+        if (!isHealthy) {
+            console.warn('AI Service health check failed after 3 attempts. Proceeding anyway, but errors are likely.');
+        }
+
         let text = '';
 
         if (material.content) {
@@ -95,12 +118,12 @@ export const generateQuiz = async (req: any, res: any) => {
 
         console.log(`Requesting 30 MCQs and 5 Essays from AI for ${text.length} chars...`);
 
-        // 5. Generate Quiz (Higher timeout for larger question set: 5 minutes)
+        // 5. Generate Quiz (Slightly reduced count for better success on Free Tier)
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
-            num_mcq: 30,
-            num_essay: 5,
-            num_questions: 35
+            num_mcq: 20, // Reduced from 30
+            num_essay: 4, // Reduced from 5
+            num_questions: 24
         }, { timeout: 300000 }); 
 
         const quizData = quizRes.data.quiz;

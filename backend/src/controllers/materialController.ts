@@ -63,3 +63,27 @@ export const getMaterials = async (req: any, res: any) => {
         res.status(500).json({ error: error.message });
     }
 };
+export const deleteMaterial = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        
+        // 1. Get material to find file_id
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        
+        // 2. Delete file from storage if it exists and isn't 'pasted_text'
+        if (material.file_id && material.file_id !== 'pasted_text') {
+            try {
+                await storage.deleteFile(BUCKET_ID, material.file_id);
+            } catch (storageErr) {
+                console.warn('Storage file deletion failed (maybe already gone):', storageErr);
+            }
+        }
+        
+        // 3. Delete document from database
+        await databases.deleteDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        
+        res.status(200).json({ message: 'Material deleted successfully' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};

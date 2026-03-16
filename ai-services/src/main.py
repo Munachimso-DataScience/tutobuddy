@@ -84,8 +84,14 @@ def get_wordnet_pos(treebank_tag):
     else:
         return wordnet.NOUN
 
+_distractor_cache = {}
+
 def generate_distractors(target_word, pos_tag):
     """Generate distractors using WordNet strategies (hypernyms, hyponyms, coordinates)"""
+    cache_key = f"{target_word.lower()}_{pos_tag}"
+    if cache_key in _distractor_cache:
+        return _distractor_cache[cache_key]
+        
     distractors = set()
     wn_pos = get_wordnet_pos(pos_tag)
     
@@ -114,7 +120,13 @@ def generate_distractors(target_word, pos_tag):
                     distractors.add(name)
                     if len(distractors) >= 15: break
 
-    return list(distractors)
+    result = list(distractors)
+    _distractor_cache[cache_key] = result
+    # Keep cache small but reasonable
+    if len(_distractor_cache) > 1000:
+        _distractor_cache.clear()
+        
+    return result
 
 def filter_distractors(distractors, target_word, sentence, pos_tag):
     """Apply filtering rules for high-quality distractors"""
@@ -298,6 +310,7 @@ async def extract_text(file: UploadFile = File(...)):
  
 @app.post("/generate-quiz")
 async def generate_quiz(data: dict):
+    gc.collect() # Clean up before starting
     try:
         text = data.get("text", "")
         num_requested = data.get("num_questions", 35) # Default total 35
@@ -325,23 +338,34 @@ async def generate_quiz(data: dict):
         used_words = set()
         
         # Phase 1: MCQs
-        for sent in sentences:
-            if len([q for q in quiz_questions if q['type'] == 'mcq']) >= num_mcq:
+        mcq_count = 0
+        for i, sent in enumerate(sentences):
+            if mcq_count >= num_mcq:
                 break
                 
+            # Optimization: Skip very short sentences early without POS tagging
+            if len(sent.split()) < 8:
+                continue
+
+            if i % 10 == 0:
+                print(f"Processing MCQ sentence {i}/{len(sentences)}... Found {mcq_count} so far.")
+
             keywords = extract_keywords(sent)
-            if not keywords: continue
+            if not keywords or len(keywords) < 2: 
+                continue
                 
             # Pick a lucky keyword
             random.shuffle(keywords)
             for kw_info in keywords:
                 word = kw_info[0]
-                if word.lower() in used_words: continue
+                if word.lower() in used_words: 
+                    continue
                     
                 mcq = generate_mcq(sent, kw_info)
                 if mcq:
                     quiz_questions.append(mcq)
                     used_words.add(word.lower())
+                    mcq_count += 1
                     break
         
         # Phase 1.5: MCQ Fallback (if we still don't have enough MCQs)
@@ -391,8 +415,10 @@ async def generate_quiz(data: dict):
                     quiz_questions.append(essay)
                     current_essays += 1
 
+        gc.collect() # Final cleanup
         return {"quiz": {"questions": quiz_questions}}
     except Exception as e:
+        gc.collect() # Cleanup on error
         print(f"Quiz Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

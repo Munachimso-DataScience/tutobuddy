@@ -3,8 +3,15 @@ import { databases } from '../lib/appwrite-admin';
 import axios from 'axios';
 
 const getAiUrl = () => {
-    const url = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-    return url.startsWith('http') ? url : `http://${url}`;
+    const envUrl = process.env.AI_SERVICE_URL;
+    const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
+
+    if (isRender) {
+        if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
+            return 'http://tutobuddy-ai:8000';
+        }
+    }
+    return envUrl || 'http://localhost:8000';
 };
 
 export const evaluateEssay = async (req: any, res: any) => {

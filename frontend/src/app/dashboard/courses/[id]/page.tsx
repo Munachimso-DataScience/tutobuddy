@@ -11,7 +11,8 @@ import {
     Loader2,
     CheckCircle2,
     ExternalLink,
-    Play
+    Play,
+    Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -59,6 +60,22 @@ export default function CourseDetailsPage() {
             console.error('Error fetching materials:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteMaterial = async (e: React.MouseEvent, materialId: string) => {
+        e.stopPropagation(); // Prevent trigger group hover/click
+        if (!confirm('Are you sure you want to delete this resource? Any associated quizzes will remain in your records but the source file will be removed.')) return;
+        
+        try {
+            const { jwt } = await account.createJWT();
+            await axios.delete(`${API_URL}/api/materials/${materialId}`, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            toast.success('Resource deleted successfully');
+            fetchMaterials();
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Failed to delete resource');
         }
     };
 
@@ -218,6 +235,12 @@ export default function CourseDetailsPage() {
                                             >
                                                 {generatingQuiz ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Play className="h-3 w-3 mr-1 fill-current" />}
                                                 Start Quiz
+                                            </button>
+                                            <button 
+                                                onClick={(e) => handleDeleteMaterial(e, file.$id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
                                             </button>
                                             <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                                                 <MoreVertical className="h-4 w-4" />

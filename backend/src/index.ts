@@ -6,7 +6,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
 import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
-import { uploadMaterial, getMaterials } from './controllers/materialController';
+import { uploadMaterial, getMaterials, deleteMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes } from './controllers/quizController';
 import { evaluateEssay } from './controllers/essayController';
@@ -65,6 +65,7 @@ app.delete('/api/courses/:id', authMiddleware, deleteCourse);
 // Material Routes
 app.post('/api/materials/upload', authMiddleware, upload.single('file'), uploadMaterial);
 app.get('/api/materials/:courseId', authMiddleware, getMaterials);
+app.delete('/api/materials/:id', authMiddleware, deleteMaterial);
 
 // Activity Logging Routes
 app.post('/api/activity/log', authMiddleware, logActivity);
