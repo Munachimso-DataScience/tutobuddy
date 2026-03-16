@@ -15,11 +15,11 @@ const getAiUrl = () => {
         return finalUrl;
     }
 
-    // 2. Fallback: If on Render, try to form a URL from common patterns
+    // 2. Fallback: If on Render, use the INTERNAL service name (http://tutobuddy-ai:8000)
+    // This is faster and bypasses public gateway timeouts.
     if (process.env.RENDER === 'true') {
-        // Try internal name first as fallback, but add .onrender.com which sometimes resolves better internally
-        const internalUrl = 'https://tutobuddy-ai.onrender.com'; 
-        console.log(`AI Service URL: ${internalUrl} (source: Render public fallback)`);
+        const internalUrl = 'http://tutobuddy-ai:8000'; 
+        console.log(`AI Service URL: ${internalUrl} (source: Render internal networking)`);
         return internalUrl;
     }
     
@@ -45,18 +45,11 @@ export const generateQuiz = async (req: any, res: any) => {
             // Use pasted text directly
             text = material.content;
         } else if (material.file_id && material.file_id !== 'pasted_text') {
-            // 2. WARM UP: Ping AI health check first (Render Free Tier can take 30s to wake up)
-            console.log('Waking up AI service...');
-            try {
-                // First ping to wake it up
-                await axios.get(`${AI_URL}/health`, { timeout: 30000 }).catch(() => {});
-            } catch (hwError) {}
-
-            // 3. Get file content from storage (ArrayBuffer)
+            // 2. Get file content from storage (ArrayBuffer)
             console.log(`Downloading file ${material.file_id} from Appwrite...`);
             const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
             
-            // 4. Prepare for AI service
+            // 3. Prepare for AI service
             const formData = new (require('form-data'))();
             const buffer = Buffer.from(fileContent);
 
@@ -65,7 +58,7 @@ export const generateQuiz = async (req: any, res: any) => {
                 contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
             });
 
-            // 5. Extract text with RETRY logic
+            // 4. Extract text with RETRY logic
             let retries = 2;
             while (retries >= 0) {
                 try {
@@ -100,7 +93,7 @@ export const generateQuiz = async (req: any, res: any) => {
 
         console.log(`Requesting 30 MCQs and 5 Essays from AI for ${text.length} chars...`);
 
-        // 6. Generate Quiz (Higher timeout for larger question set: 5 minutes)
+        // 5. Generate Quiz (Higher timeout for larger question set: 5 minutes)
         const quizRes = await axios.post(`${AI_URL}/generate-quiz`, {
             text: text,
             num_mcq: 30,
@@ -115,7 +108,7 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error('AI Service failed to generate any valid questions. Try again with more content.');
         }
 
-        // 7. Store in Appwrite
+        // 6. Store in Appwrite
         console.log(`Saving quiz with ${quizData.questions.length} questions to collection: ${COLLECTIONS.QUIZZES}...`);
         const quizDoc = await databases.createDocument(
             DATABASE_ID,
@@ -137,7 +130,7 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error(`Database rejected the quiz: ${dbErr.message}`);
         });
 
-        // 8. Update course completion tracking
+        // 7. Update course completion tracking
         try {
             const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, material.course_id);
             const newProgress = Math.min((course.progress || 0) + 5, 100);

@@ -344,6 +344,22 @@ async def generate_quiz(data: dict):
                     used_words.add(word.lower())
                     break
         
+        # Phase 1.5: MCQ Fallback (if we still don't have enough MCQs)
+        current_mcq = len([q for q in quiz_questions if q['type'] == 'mcq'])
+        if current_mcq < num_mcq:
+            print(f"MCQ Fallback: only found {current_mcq}/{num_mcq}")
+            for sent in sentences:
+                if len([q for q in quiz_questions if q['type'] == 'mcq']) >= num_mcq: break
+                # Simplified MCQ for fallback: just pick a word
+                words = [w for w in word_tokenize(sent) if len(w) > 5 and w.isalnum()]
+                for w in words:
+                    if w.lower() in used_words: continue
+                    mcq = generate_mcq(sent, (w, 'NN'))
+                    if mcq:
+                        quiz_questions.append(mcq)
+                        used_words.add(w.lower())
+                        break
+        
         # Phase 2: Essays
         essay_candidates = [s for s in sentences if len(s.split()) >= 12] # Lowered from 15 to 12 words
         random.shuffle(essay_candidates)
