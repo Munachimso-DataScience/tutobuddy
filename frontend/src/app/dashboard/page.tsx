@@ -178,9 +178,11 @@ export default function DashboardPage() {
                             <p className="text-blue-100 text-sm font-medium leading-relaxed">
                                 Students who study at least 30 minutes a day are 4x more likely to pass their finals.
                             </p>
-                            <button className="mt-6 bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors shadow-lg">
-                                Learn More
-                            </button>
+                            <Link href="/dashboard/success-tips" className="mt-6 inline-block">
+                                <button className="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors shadow-lg">
+                                    Learn More
+                                </button>
+                            </Link>
                         </div>
                         <div className="absolute -right-4 -bottom-4 opacity-10">
                             <TrendingUp className="h-32 w-32" />

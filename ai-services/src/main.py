@@ -53,23 +53,42 @@ def preprocess_text(text):
     sentences = sent_tokenize(text)
     return [s for s in sentences if len(s.strip()) > 40]
 
+def is_high_quality(sentence):
+    """Filter for sentences that sound like facts or definitions"""
+    indicators = [
+        ' is ', ' are ', ' refers to ', ' defined as ', ' known as ', 
+        ' because ', ' therefore ', ' significant ', ' primary ', 
+        ' essentially ', ' consists of ', ' includes ', ' process of '
+    ]
+    # Length check + indicator check
+    if len(sentence.split()) < 10:
+        return False
+        
+    return any(ind in sentence.lower() for ind in indicators)
+
 def extract_keywords(sentence):
-    """Extract candidate keywords using POS tagging (NN, NNS, NNP, JJ, VB)"""
+    """Extract candidate keywords using POS tagging, prioritizing longer nouns"""
     tokens = word_tokenize(sentence)
     tagged = pos_tag(tokens)
     
-    # Filter for technical/important parts of speech
+    # Priority 1: Proper Nouns (NNP) - usually names of theories, places, things
+    # Priority 2: Standard Nouns (NN)
+    # Priority 3: Adjectives over 6 chars
     candidates = []
     for word, pos in tagged:
-        # Avoid stopwords and very short words
         if len(word) < 4 or not word.isalnum():
             continue
-        
-        # Include Nouns, Adjectives, and Verbs (per user request)
-        if pos in ('NN', 'NNS', 'NNP', 'JJ', 'VB'):
-            candidates.append((word, pos))
             
-    return candidates
+        if pos == 'NNP':
+            candidates.append((word, pos, 3)) # High priority
+        elif pos in ('NN', 'NNS'):
+            candidates.append((word, pos, 2))
+        elif pos == 'JJ' and len(word) > 6:
+            candidates.append((word, pos, 1))
+            
+    # Sort by priority then by length (longer = more specific)
+    candidates.sort(key=lambda x: (x[2], len(x[0])), reverse=True)
+    return [(c[0], c[1]) for c in candidates]
 
 def get_wordnet_pos(treebank_tag):
     """Map treebank POS tags to WordNet POS tags"""
@@ -226,18 +245,36 @@ def generate_essay(sentence):
     if not keywords:
         return None
     
-    # Pick a noun to be the subject
-    subjects = [w for w, pos in keywords if pos.startswith('N')]
-    if not subjects:
-        subjects = [keywords[0][0]]
+    # List of generic words to NEVER use as essay topics
+    blacklist = {
+        'term', 'context', 'material', 'section', 'point', 'study', 'question', 
+        'text', 'sentence', 'subject', 'relationship', 'importance', 'overall',
+        'significance', 'discussion', 'concept', 'structure', 'element', 'core'
+    }
     
-    subject = subjects[0]
+    # 1. Focus on NOUNS (NN, NNP, NNS)
+    # 2. Filter out blacklist words
+    # 3. Require minimum length of 6 for better quality
+    candidates = [word for word, pos in keywords 
+                 if pos.startswith('N') 
+                 and word.lower() not in blacklist 
+                 and len(word) >= 6]
+    
+    if not candidates:
+        # Fallback to any noun over 5 chars if no specific candidate found
+        candidates = [word for word, pos in keywords if pos.startswith('N') and len(word) > 5]
+        
+    if not candidates:
+        return None
+    
+    # Pick the LONGEST noun - it is usually the most specific technical term
+    subject = max(candidates, key=len)
     
     prompts = [
-        f"Explain the significance of {subject} in the context of your study material.",
-        f"Describe how {subject} relates to the overall concepts discussed in this section.",
-        f"Discuss the role and impact of {subject} based on the provided text.",
-        f"Summarize the key points regarding {subject} and explain its importance."
+        f"Explain the significance of '{subject}' based on your study material.",
+        f"How does '{subject}' relate to the key themes discussed in this section?",
+        f"Discuss the role and impact of '{subject}' as described in the provided text.",
+        f"Looking at your material, summarize the most important points regarding '{subject}'."
     ]
     
     return {
@@ -245,7 +282,7 @@ def generate_essay(sentence):
         "question": random.choice(prompts),
         "context": sentence,
         "answer": sentence, # Context serves as the reference answer
-        "explanation": f"This question tests your deep understanding of '{subject}'. Your answer should be compared against the following reference from your material: \"{sentence}\""
+        "explanation": f"Analyze your response above. Does it correctly address the role of '{subject}'? The reference material says: \"{sentence}\""
     }
 
 # --- API Endpoints ---
@@ -343,8 +380,8 @@ async def generate_quiz(data: dict):
             if mcq_count >= num_mcq:
                 break
                 
-            # Optimization: Skip very short sentences early without POS tagging
-            if len(sent.split()) < 8:
+            # NEW: prioritize "Educational" sentences
+            if not is_high_quality(sent) and len(sentences) > num_mcq * 3:
                 continue
 
             if i % 10 == 0:
@@ -508,43 +545,57 @@ async def evaluate_essay(data: dict):
     try:
         question = data.get("question", "")
         student_answer = data.get("student_answer", "")
-        context = data.get("context", "") # Reference answer or context
+        context = data.get("context", "") # This is the source sentence
+        
+        # 1. Extract the topic from the question (using the quotes we added earlier)
+        topic_match = re.search(r"'(.*?)'", question)
+        topic = topic_match.group(1) if topic_match else "this concept"
         
         if not student_answer or len(student_answer) < 5:
             return {
                 "score": 0,
                 "relevance": "None",
                 "feedback": "Your answer is too short to be evaluated. Please provide a more detailed explanation.",
-                "model_answer_highlights": ""
+                "improvement_tips": "A good essay should be at least 2-3 sentences long and use specific terminology.",
+                "master_interpretation": f"Based on the material, '{topic}' is described as: \"{context}\"",
+                "links": []
             }
 
-        # Simple similarity check
+        # 2. Score Calculation (Improved overlap logic)
         context_words = set(word_tokenize(context.lower()))
         student_words = set(word_tokenize(student_answer.lower()))
-        
         overlap = student_words.intersection(context_words)
-        stop_words = set(['the', 'a', 'is', 'are', 'in', 'at', 'on', 'of', 'and', 'for', 'with', 'this', 'that'])
+        
+        stop_words = set(['the', 'a', 'is', 'are', 'in', 'at', 'on', 'of', 'and', 'for', 'with', 'this', 'that', 'to', 'it', 'from', 'an'])
         meaningful_overlap = [w for w in overlap if len(w) > 3 and w not in stop_words]
         
         score = min(len(meaningful_overlap) * 25, 100) 
         relevance = "High" if score >= 75 else "Medium" if score >= 40 else "Low"
         
-        feedback = "AI Evaluation: "
+        # 3. Dynamic Feedback
+        feedback = f"AI Evaluation for '{topic}': "
         if meaningful_overlap:
-            feedback += f"Your answer correctly identified key terms such as: {', '.join(meaningful_overlap[:3])}. "
+            feedback += f"You correctly mentioned: {', '.join(meaningful_overlap[:3])}. "
         
-        if score >= 75:
-            feedback += "Excellent! You have a strong grasp of this concept."
-        elif score >= 40:
-            feedback += "Good effort. You covered some basic concepts but could improve by including more details."
+        if score < 50:
+            tips = "Try to be more specific. Your answer is a bit general. Include more details from the text."
         else:
-            feedback += "Your answer is too general. Try to incorporate more specific terminology from the text."
+            tips = "Great job! To get 100%, ensure you explain the relationship between this and other core concepts."
+
+        # 4. Generate Resources for this specific essay topic
+        safe_query = re.sub(r'[^a-zA-Z0-9\s]', '', topic).strip().replace(' ', '+')
+        links = [
+            { "title": f"Mastering {topic} (Video Guide)", "url": f"https://www.youtube.com/results?search_query={safe_query}+explained", "type": "video" },
+            { "title": f"Deep Dive: {topic} Resources", "url": f"https://www.khanacademy.org/search?page_search_query={safe_query}", "type": "article" }
+        ]
 
         return {
             "score": score,
             "relevance": relevance,
             "feedback": feedback,
-            "model_answer_highlights": ", ".join(meaningful_overlap[:5])
+            "improvement_tips": tips,
+            "master_concept": f"To master this, remember that the material defines {topic} as follows: {context}",
+            "links": links
         }
     except Exception as e:
         print(f"Essay Evaluation Error: {e}")
