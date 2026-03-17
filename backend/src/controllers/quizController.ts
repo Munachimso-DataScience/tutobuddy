@@ -7,7 +7,10 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 
 const getAiUrl = () => {
-    const envUrl = process.env.AI_SERVICE_URL;
+    let envUrl = process.env.AI_SERVICE_URL;
+    if (envUrl && envUrl.endsWith('/')) {
+        envUrl = envUrl.slice(0, -1);
+    }
     const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
 
     // 1. If we are on Render, try to find the best URL
