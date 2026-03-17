@@ -430,20 +430,28 @@ async def explain_incorrect(data: dict):
         correct_answer = data.get("correct_answer", "")
         context = data.get("context", "")
         
+        # 1. Clean the question (remove placeholders for better POS tagging if needed)
+        clean_question = question.replace('________', correct_answer)
+        
+        # 2. Extract the main topic - prioritize the CORRECT ANSWER itself
+        # This ensures we never get "________" as a topic
+        topic = correct_answer
+        
+        # Optional: if correct answer is too short, try to find a noun in the question
+        if len(topic) <= 3:
+            tokens = word_tokenize(clean_question)
+            tagged = pos_tag(tokens)
+            nouns = [word for word, pos in tagged if pos.startswith('N') and len(word) > 4]
+            topic = nouns[0] if nouns else correct_answer
+
         explanation = f"You selected '{user_answer}', but the correct answer is '{correct_answer}'.\n\n"
+        explanation += f"**AI Simplified Concept:** '{topic}' is a key term in this context. "
+        explanation += f"Understanding this concept is essential for mastering the material described in your study document."
         
-        # Extraction logic for 'Simplified Concept' notes
-        tokens = word_tokenize(question + " " + correct_answer)
-        tagged = pos_tag(tokens)
-        topic_keywords = [word for word, pos in tagged if pos.startswith('N') and len(word) > 4]
-        topic = topic_keywords[0] if topic_keywords else correct_answer
+        # 3. Create safe search query (handle spaces and special chars)
+        safe_query = re.sub(r'[^a-zA-Z0-9\s]', '', topic).strip().replace(' ', '+')
         
-        explanation += f"**AI Simplified Concept:** {topic} refers to a core element in this context. "
-        explanation += f"It is essential for understanding the relationship described in your material."
-        
-        safe_query = topic.replace(' ', '+')
-        
-        # Curated Resources
+        # 4. Curated Resources with better formatting
         links = [
             { 
                 "title": f"Khan Academy: Practice {topic}", 
@@ -468,6 +476,7 @@ async def explain_incorrect(data: dict):
             "links": links
         }
     except Exception as e:
+        print(f"Explanation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-weakness")
