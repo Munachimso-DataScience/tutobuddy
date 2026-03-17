@@ -189,7 +189,7 @@ export default function Home() {
                   Never get stuck on a <span className="text-blue-400">wrong answer</span> again.
                 </h2>
                 <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-                  TutorBuddy doesn't just tell you that you're wrong. Our AI analyzes your mistakes and instantly surfaces:
+                  TutorBuddy doesn&apos;t just tell you that you&apos;re wrong. Our AI analyzes your mistakes and instantly surfaces:
                 </p>
 
                 <ul className="space-y-4">
