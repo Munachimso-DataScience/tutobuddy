@@ -98,7 +98,7 @@ export default function SchedulePage() {
                         <div key={dayName} className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter text-lg">{dayName}</h3>
-                                <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black px-2 py-1 rounded-full px-3">
+                                <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black py-1 rounded-full px-3">
                                     {sessions.length} SESSIONS
                                 </span>
                             </div>
