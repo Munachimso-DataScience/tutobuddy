@@ -11,7 +11,9 @@ import {
     Trophy,
     Clock,
     ArrowUpRight,
-    Loader2
+    Loader2,
+    Crown,
+    CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 
