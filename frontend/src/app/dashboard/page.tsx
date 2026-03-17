@@ -112,7 +112,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                 <StatCard
                     icon={BookOpen}
                     label="Active Courses"
@@ -129,16 +129,61 @@ export default function DashboardPage() {
                 <StatCard
                     icon={Clock}
                     label="Study Time"
-                    value="0h"
-                    trend="+0h"
+                    value={stats?.studyTime || "0m"}
+                    trend="+5m"
                     color="bg-purple-600"
                 />
                 <StatCard
                     icon={TrendingUp}
                     label="Avg Score"
-                    value="0%"
+                    value={stats?.avgScore || "0%"}
                     color="bg-emerald-500"
                 />
+                {/* New Leaderboard Glance Card */}
+                <Link href="/dashboard/leaderboard" className="col-span-2 lg:col-span-1">
+                    <div className="bg-linear-to-br from-yellow-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-500/20 text-white h-full hover:scale-105 transition-all group">
+                        <div className="flex items-center justify-between mb-2">
+                            <Crown className="group-hover:rotate-12 transition-transform" size={24} />
+                            <ArrowUpRight size={16} />
+                        </div>
+                        <h3 className="text-xs font-black uppercase tracking-widest opacity-80">Rank #245</h3>
+                        <p className="text-xl font-black tracking-tighter mt-1">Join the Race</p>
+                    </div>
+                </Link>
+            </div>
+
+            {/* Daily Quests Section */}
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Daily Quests</h3>
+                        <p className="text-sm text-gray-500 font-medium">Complete these to level up your exam readiness</p>
+                    </div>
+                    <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest">
+                        0/3 Complete
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[
+                        { title: "Quiz Master", desc: "Complete any 10-question quiz", xp: "+50 XP", done: false, color: "bg-blue-500" },
+                        { title: "The Scholar", desc: "Upload and read 1 new document", xp: "+30 XP", done: false, color: "bg-purple-500" },
+                        { title: "Essay Writer", desc: "Submit 1 high-quality essay", xp: "+100 XP", done: false, color: "bg-emerald-500" }
+                    ].map((quest, i) => (
+                        <div key={i} className="flex items-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl group cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-700">
+                            <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-blue-500/10`}>
+                                <CheckCircle2 size={20} className={quest.done ? "text-white" : "text-white/30"} />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">{quest.title}</h4>
+                                <p className="text-xs text-gray-500">{quest.desc}</p>
+                            </div>
+                            <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest pl-2">
+                                {quest.xp}
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

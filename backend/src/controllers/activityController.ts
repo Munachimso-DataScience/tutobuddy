@@ -110,15 +110,48 @@ export const getStats = async (req: any, res: any) => {
             COLLECTIONS.ACTIVITY,
             [
                 Query.equal('user_id', userId),
-                Query.greaterThan('timestamp', lastWeek.toISOString())
+                Query.greaterThan('timestamp', lastWeek.toISOString()),
+                Query.limit(100)
             ]
         );
+
+        // 1. Calculate Study Time (Sum of all 'study_session' durations)
+        const studyLogs = logs.documents.filter(log => log.type === 'study_session');
+        const totalMinutes = studyLogs.reduce((acc, log) => {
+            try {
+                const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                return acc + (Number(details?.duration) || 0);
+            } catch (e) {
+                return acc;
+            }
+        }, 0);
+        const studyTimeStr = totalMinutes >= 60 
+            ? `${(totalMinutes / 60).toFixed(1)}h` 
+            : `${totalMinutes}m`;
+
+        // 2. Fetch Quiz Scores for Average
+        const quizzes = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.QUIZZES,
+            [
+                Query.equal('user_id', userId),
+                Query.limit(50)
+            ]
+        );
+
+        let avgScore = 0;
+        if (quizzes.total > 0) {
+            const totalScore = quizzes.documents.reduce((acc, q) => acc + (Number(q.score) || 0), 0);
+            avgScore = Math.round(totalScore / quizzes.total);
+        }
 
         res.status(200).json({
             streak: profile.current_streak,
             lastActive: profile.last_active,
             activityCount: logs.total,
-            recentLogs: logs.documents
+            recentLogs: logs.documents,
+            studyTime: studyTimeStr,
+            avgScore: `${avgScore}%`
         });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

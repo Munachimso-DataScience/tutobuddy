@@ -40,23 +40,33 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-100 dark:selection:bg-indigo-900 overflow-x-hidden">
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="TutorBuddy Logo" className="h-10 w-10 rounded-xl object-contain shadow-lg shadow-indigo-500/10" />
-            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-blue-600">
+      <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-4 group">
+            <div className="p-2.5 bg-linear-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+              <BookOpen className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-blue-600">
               TutorBuddy
             </span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-12 mr-8">
+            <Link href="#features" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Features</Link>
+            <Link href="#how-it-works" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">How it Works</Link>
+            <Link href="/about" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">About</Link>
           </div>
-          <div className="flex items-center gap-6 md:gap-10">
-            <Link href="/login" className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors">
-              Log in
+
+          <div className="flex items-center gap-8">
+            <Link href="/login" className="text-sm font-black text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-all">
+              Sign In
             </Link>
             <Link
               href="/register"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
+              className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-500/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
             >
-              Get Started
+              Join Free
+              <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

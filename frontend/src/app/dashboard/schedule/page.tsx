@@ -91,54 +91,66 @@ export default function SchedulePage() {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 p-8">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20">
-                        <Loader2 className="h-10 w-10 text-blue-600 animate-spin mb-4" />
-                        <p className="text-gray-500">Loading schedule...</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-8 gap-4 overflow-x-auto min-w-[800px]">
-                        <div className="pt-12">
-                            {hoursArr.map((hour) => (
-                                <div key={hour} className="h-20 text-xs font-bold text-gray-400 text-right pr-4 pt-2">
-                                    {hour}
-                                </div>
-                            ))}
-                        </div>
-                        {days.map((dayName) => (
-                            <div key={dayName} className="flex-1">
-                                <h3 className="text-center font-bold text-gray-400 text-xs uppercase tracking-widest mb-4">
-                                    {dayName.substring(0, 3)}
-                                </h3>
-                                <div className="border border-gray-50 dark:border-gray-800 rounded-2xl min-h-[600px] bg-gray-50/30 dark:bg-gray-900/30 relative">
-                                    {schedules.filter(s => s.day === dayName).map((s) => {
-                                        // Calculate position based on start time (assume 8am is top)
-                                        const startHour = parseInt(s.start_time.split(':')[0]);
-                                        const startMin = parseInt(s.start_time.split(':')[1]);
-                                        const top = (startHour - 8) * 80 + (startMin / 60) * 80 + 48; // adjusted for header
-
-                                        return (
-                                            <motion.div 
-                                                key={s.$id}
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className="absolute left-1 right-1 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-600 p-3 rounded-r-xl shadow-sm cursor-pointer group hover:shadow-md transition-all z-10"
-                                                style={{ top: `${top}px` }}
-                                                onClick={() => {
-                                                    if (confirm('Delete this session?')) handleDeleteSchedule(s.$id);
-                                                }}
-                                            >
-                                                <p className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400">{s.start_time} - {s.end_time}</p>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white mt-0.5 truncate">{s.title}</p>
-                                            </motion.div>
-                                        );
-                                    })}
-                                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {days.map((dayName) => {
+                    const sessions = schedules.filter(s => s.day === dayName);
+                    return (
+                        <div key={dayName} className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter text-lg">{dayName}</h3>
+                                <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black px-2 py-1 rounded-full px-3">
+                                    {sessions.length} SESSIONS
+                                </span>
                             </div>
-                        ))}
-                    </div>
-                )}
+
+                            <div className="space-y-4 flex-1">
+                                {sessions.length > 0 ? (
+                                    sessions.map((s) => (
+                                        <motion.div 
+                                            key={s.$id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="group relative p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-all cursor-default"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-1">
+                                                        <Clock className="w-3 h-3 mr-1" />
+                                                        {s.start_time} - {s.end_time}
+                                                    </div>
+                                                    <h4 className="font-bold text-gray-900 dark:text-white text-sm line-clamp-2">{s.title}</h4>
+                                                </div>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (confirm('Delete this session?')) handleDeleteSchedule(s.$id);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 transition-all rounded-lg hover:bg-red-50"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="h-24 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl flex items-center justify-center">
+                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest italic">Rest Day</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    setDay(dayName);
+                                    setIsModalOpen(true);
+                                }}
+                                className="mt-6 w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 group"
+                            >
+                                <Plus size={14} className="group-hover:scale-125 transition-transform" />
+                                Add Session
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* New Schedule Modal */}
