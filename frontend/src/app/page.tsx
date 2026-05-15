@@ -40,8 +40,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-indigo-100 dark:selection:bg-indigo-900 overflow-x-hidden">
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
+<nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 sm:h-24 flex items-center justify-between gap-4">
+
+
           <Link href="/" className="flex items-center gap-4 group">
             <div className="p-2.5 bg-linear-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
               <BookOpen className="h-6 w-6 text-white" />
@@ -52,10 +54,9 @@ export default function Home() {
           </Link>
 
           <div className="hidden md:flex items-center gap-12 mr-8">
-            <Link href="#features" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Features</Link>
-            <Link href="#how-it-works" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">How it Works</Link>
             <Link href="/about" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">About</Link>
           </div>
+
 
           <div className="flex items-center gap-8">
             <Link href="/login" className="text-sm font-black text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-all">

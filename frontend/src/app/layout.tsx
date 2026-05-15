@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
+import "react-toastify/dist/ReactToastify.css";
+
+import { AuthProvider } from "@/context/AuthContext";
+import { ToastContainer } from "react-toastify";
+
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -15,11 +21,11 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "AuraStudy - Personalized Intelligent Learning",
   description: "Your AI-powered university study companion",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
-import { AuthProvider } from '@/context/AuthContext';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 export default function RootLayout({
   children,
