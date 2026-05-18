@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { account } from '@/lib/appwrite';
+import { account, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import {
@@ -51,7 +51,7 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const { jwt } = await account.createJWT();
+                const jwt = await getCachedJWT();
                 
                 // Fetch stats and courses in parallel
                 const [statsRes, coursesRes] = await Promise.all([
@@ -196,7 +196,7 @@ export default function DashboardPage() {
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Study Activity</h3>
                             <p className="text-sm text-gray-500 font-medium">Weekly hours spent learning</p>
                         </div>
-                        <select className="bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-xs font-bold px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                        <select className="bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-xs font-bold px-3 py-2 focus:ring-2 focus:ring-blue-500" title="Select Study Activity Time Range" aria-label="Select Study Activity Time Range">
                             <option>Last 7 Days</option>
                             <option>Last 30 Days</option>
                         </select>
@@ -250,6 +250,10 @@ export default function DashboardPage() {
                         const daysToExam = course.exam_date ? Math.ceil((new Date(course.exam_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
                         return (
                         <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl">
+                            <style>{`
+                                .progress-bar-prog-${idx} { width: ${course.progress || 0}%; }
+                                .progress-bar-read-${idx} { width: ${course.exam_readiness || 0}%; }
+                            `}</style>
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.title} ({course.code})</h4>
@@ -273,7 +277,7 @@ export default function DashboardPage() {
                                         <span>{course.progress || 0}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                                        <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${course.progress || 0}%` }}></div>
+                                        <div className={`bg-emerald-500 h-2.5 rounded-full progress-bar-prog-${idx}`}></div>
                                     </div>
                                 </div>
                                 <div>
@@ -282,7 +286,7 @@ export default function DashboardPage() {
                                         <span>{course.exam_readiness || 0}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${course.exam_readiness || 0}%` }}></div>
+                                        <div className={`bg-blue-600 h-2.5 rounded-full progress-bar-read-${idx}`}></div>
                                     </div>
                                 </div>
                             </div>

@@ -12,13 +12,20 @@ import {
     CheckCircle2,
     ExternalLink,
     Play,
-    Trash2
+    Trash2,
+    Volume2,
+    VolumeX,
+    Pause,
+    Square,
+    Sparkles,
+    Clipboard,
+    X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useStudyHeartbeat } from '@/hooks/useStudyHeartbeat';
-import { account } from '@/lib/appwrite';
+import { account, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import QuizComponent from '@/components/quiz/QuizComponent';
 
@@ -39,6 +46,174 @@ export default function CourseDetailsPage() {
     const [pastedTitle, setPastedTitle] = useState('');
     const [category, setCategory] = useState('Science');
 
+    // TTS States
+    const [ttsActive, setTtsActive] = useState(false);
+    const [ttsText, setTtsText] = useState('');
+    const [ttsTitle, setTtsTitle] = useState('');
+    const [ttsPlaying, setTtsPlaying] = useState(false);
+    const [ttsSpeed, setTtsSpeed] = useState(1);
+    const [ttsProgress, setTtsProgress] = useState(0);
+    const [ttsUtterance, setTtsUtterance] = useState<any>(null);
+    const [loadingTTS, setLoadingTTS] = useState<string | null>(null);
+
+    // Summary States
+    const [summaryActive, setSummaryActive] = useState(false);
+    const [summaryText, setSummaryText] = useState('');
+    const [summaryTitle, setSummaryTitle] = useState('');
+    const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    const handleReadAloud = async (materialId: string, title: string) => {
+        if (typeof window === 'undefined') return;
+        
+        if (ttsActive) {
+            window.speechSynthesis.cancel();
+        }
+        
+        setLoadingTTS(materialId);
+        try {
+            const jwt = await getCachedJWT();
+            const res = await axios.get(`${API_URL}/api/materials/${materialId}/text`, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            const text = res.data.text;
+            if (!text || text.trim().length === 0) {
+                toast.error("This resource does not have any speakable text.");
+                return;
+            }
+            setTtsText(text);
+            setTtsTitle(title);
+            setTtsActive(true);
+            setTtsProgress(0);
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = ttsSpeed;
+            
+            let charIndex = 0;
+            utterance.onboundary = (event) => {
+                if (event.name === 'word') {
+                    charIndex = event.charIndex;
+                    setTtsProgress(Math.floor((charIndex / text.length) * 100));
+                }
+            };
+            
+            utterance.onend = () => {
+                setTtsPlaying(false);
+                setTtsProgress(100);
+            };
+            
+            utterance.onerror = () => {
+                setTtsPlaying(false);
+            };
+            
+            setTtsUtterance(utterance);
+            setTtsPlaying(true);
+            window.speechSynthesis.speak(utterance);
+        } catch (error) {
+            console.error("TTS failed:", error);
+            toast.error("Failed to load text for audio playback.");
+        } finally {
+            setLoadingTTS(null);
+        }
+    };
+
+    const handleTtsPlayPause = () => {
+        if (typeof window === 'undefined') return;
+        if (!ttsUtterance) return;
+        
+        if (ttsPlaying) {
+            window.speechSynthesis.pause();
+            setTtsPlaying(false);
+        } else {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            } else {
+                window.speechSynthesis.speak(ttsUtterance);
+            }
+            setTtsPlaying(true);
+        }
+    };
+
+    const handleTtsStop = () => {
+        if (typeof window === 'undefined') return;
+        window.speechSynthesis.cancel();
+        setTtsPlaying(false);
+        setTtsActive(false);
+        setTtsUtterance(null);
+        setTtsProgress(0);
+    };
+
+    const handleTtsSpeedChange = (speed: number) => {
+        setTtsSpeed(speed);
+        if (typeof window === 'undefined') return;
+        
+        if (ttsActive && ttsText) {
+            window.speechSynthesis.cancel();
+            const charIndex = Math.floor((ttsProgress / 100) * ttsText.length);
+            const remainingText = ttsText.substring(charIndex);
+            
+            const newUtterance = new SpeechSynthesisUtterance(remainingText || ttsText);
+            newUtterance.rate = speed;
+            
+            let charOffset = charIndex;
+            newUtterance.onboundary = (event) => {
+                if (event.name === 'word') {
+                    const progressIndex = charOffset + event.charIndex;
+                    setTtsProgress(Math.floor((progressIndex / ttsText.length) * 100));
+                }
+            };
+            
+            newUtterance.onend = () => {
+                setTtsPlaying(false);
+                setTtsProgress(100);
+            };
+            
+            newUtterance.onerror = () => {
+                setTtsPlaying(false);
+            };
+            
+            setTtsUtterance(newUtterance);
+            window.speechSynthesis.speak(newUtterance);
+            setTtsPlaying(true);
+        }
+    };
+
+    const handleSummarize = async (materialId: string, title: string) => {
+        setLoadingSummary(materialId);
+        try {
+            const jwt = await getCachedJWT();
+            const res = await axios.post(`${API_URL}/api/materials/${materialId}/summarize`, {}, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            setSummaryText(res.data.summary);
+            setSummaryTitle(title);
+            setSummaryActive(true);
+        } catch (error) {
+            console.error("Summarization failed:", error);
+            toast.error("Failed to generate notes summary.");
+        } finally {
+            setLoadingSummary(null);
+        }
+    };
+
+    const renderMarkdown = (md: string) => {
+        let html = md;
+        html = html.replace(/^### (.*$)/gim, '<h4 class="text-md font-bold text-gray-900 dark:text-white mt-4 mb-2">$1</h4>');
+        html = html.replace(/^## (.*$)/gim, '<h3 class="text-lg font-black text-blue-600 mt-5 mb-3">$1</h3>');
+        html = html.replace(/^# (.*$)/gim, '<h2 class="text-xl font-extrabold text-gray-900 dark:text-white mt-6 mb-4">$2</h2>');
+        html = html.replace(/\*\*(.*?)\*\*/gim, '<strong class="font-extrabold text-blue-600 dark:text-blue-400">$1</strong>');
+        html = html.replace(/^\s*-\s*(.*$)/gim, '<li class="ml-4 list-disc text-sm text-gray-700 dark:text-gray-300 mb-1">$1</li>');
+        html = html.replace(/^(?!<h|<li|<ul|<ol)(.*$)/gim, '<p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-3">$1</p>');
+        return html;
+    };
+
     const categories = ["Science", "Arts", "Engineering", "Medicine", "Business", "Law", "Others"];
 
     const router = useRouter();
@@ -51,7 +226,7 @@ export default function CourseDetailsPage() {
 
     const fetchMaterials = async () => {
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             const response = await axios.get(`${API_URL}/api/materials/${courseId}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
@@ -68,7 +243,7 @@ export default function CourseDetailsPage() {
         if (!confirm('Are you sure you want to delete this resource? Any associated quizzes will remain in your records but the source file will be removed.')) return;
         
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             await axios.delete(`${API_URL}/api/materials/${materialId}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
@@ -82,7 +257,7 @@ export default function CourseDetailsPage() {
     const handleGenerateQuiz = async (materialId: string) => {
         setGeneratingQuiz(true);
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             const response = await axios.post(`${API_URL}/api/quizzes/generate`, {
                 materialId
             }, {
@@ -115,7 +290,7 @@ export default function CourseDetailsPage() {
         formData.append('title', file.name);
 
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             await axios.post(`${API_URL}/api/materials/upload`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -139,7 +314,7 @@ export default function CourseDetailsPage() {
 
         setUploading(true);
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             await axios.post(`${API_URL}/api/materials/upload`, {
                 courseId,
                 title: pastedTitle,
@@ -187,6 +362,8 @@ export default function CourseDetailsPage() {
             <div className="flex items-center space-x-4">
                 <button
                     onClick={() => router.back()}
+                    aria-label="Go back"
+                    title="Go back"
                     className="h-10 w-10 flex items-center justify-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 transition-all shadow-sm"
                 >
                     <ChevronLeft className="h-5 w-5" />
@@ -227,7 +404,7 @@ export default function CourseDetailsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center space-x-4">
+                                        <div className="flex items-center space-x-2">
                                             <button 
                                                 onClick={() => handleGenerateQuiz(file.$id)}
                                                 disabled={generatingQuiz}
@@ -237,12 +414,34 @@ export default function CourseDetailsPage() {
                                                 Start Quiz
                                             </button>
                                             <button 
+                                                onClick={() => handleSummarize(file.$id, file.title)}
+                                                disabled={loadingSummary !== null}
+                                                className="flex items-center text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-sm"
+                                            >
+                                                {loadingSummary === file.$id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                                                Summarize
+                                            </button>
+                                            <button 
+                                                onClick={() => handleReadAloud(file.$id, file.title)}
+                                                disabled={loadingTTS !== null}
+                                                className="flex items-center text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                                            >
+                                                {loadingTTS === file.$id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Volume2 className="h-3 w-3 mr-1" />}
+                                                Read Aloud
+                                            </button>
+                                            <button 
                                                 onClick={(e) => handleDeleteMaterial(e, file.$id)}
+                                                aria-label="Delete resource"
+                                                title="Delete resource"
                                                 className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
-                                            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                                            <button 
+                                                aria-label="More options"
+                                                title="More options"
+                                                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
                                                 <MoreVertical className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -284,6 +483,8 @@ export default function CourseDetailsPage() {
                                 <select 
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
+                                    aria-label="Topic Category"
+                                    title="Topic Category"
                                     className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-sm font-medium px-4 py-2.5 focus:ring-2 focus:ring-blue-500"
                                 >
                                     {categories.map(cat => (
@@ -353,6 +554,186 @@ export default function CourseDetailsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ======================================================== */}
+            {/* TEXT-TO-SPEECH PLAYER DRAWER */}
+            {/* ======================================================== */}
+            <AnimatePresence>
+                {ttsActive && (
+                    <motion.div 
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 shadow-2xl p-6 px-8 rounded-t-3xl max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6"
+                    >
+                        {/* Title & Info */}
+                        <div className="flex items-center space-x-4">
+                            <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-950/40 rounded-2xl flex items-center justify-center text-emerald-600 animate-pulse">
+                                <Volume2 className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">NOW READING</span>
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-xs">{ttsTitle}</h4>
+                            </div>
+                        </div>
+
+                        {/* Controls */}
+                        <div className="flex items-center space-x-6">
+                            {/* Speed Controls */}
+                            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800/40">
+                                <span className="text-[9px] font-bold text-gray-400 px-2">SPEED</span>
+                                {[1, 1.25, 1.5, 2].map((s) => (
+                                    <button 
+                                        key={s}
+                                        onClick={() => handleTtsSpeedChange(s)}
+                                        className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${ttsSpeed === s ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                    >
+                                        {s}x
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Player Main Buttons */}
+                            <div className="flex items-center space-x-3">
+                                <button 
+                                    onClick={handleTtsPlayPause}
+                                    aria-label={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
+                                    title={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
+                                    className="h-10 w-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:scale-105 transition-all shadow-md shadow-emerald-500/20"
+                                >
+                                    {ttsPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
+                                </button>
+                                <button 
+                                    onClick={handleTtsStop}
+                                    aria-label="Stop playback"
+                                    title="Stop playback"
+                                    className="h-10 w-10 bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-red-500 rounded-full flex items-center justify-center hover:scale-105 transition-all"
+                                >
+                                    <Square className="h-4 w-4 fill-current" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Progress Waveform / Bar */}
+                        <div className="w-full md:w-64 flex flex-col space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
+                                <span>PROGRESS</span>
+                                <span>{ttsProgress}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <style>{`.tts-progress-fill { width: ${ttsProgress}% }`}</style>
+                                <div className="h-full bg-emerald-500 transition-all duration-300 tts-progress-fill" />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ======================================================== */}
+            {/* AI SUMMARIZER MODAL */}
+            {/* ======================================================== */}
+            <AnimatePresence>
+                {summaryActive && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[85vh]"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-950/10 dark:to-blue-950/10">
+                                <div className="flex items-center space-x-3">
+                                    <div className="h-10 w-10 bg-purple-100 dark:bg-purple-950/30 rounded-xl flex items-center justify-center text-purple-600">
+                                        <Sparkles className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest block">AI-GENERATED SUMMARY</span>
+                                        <h3 className="text-md font-bold text-gray-900 dark:text-white truncate max-w-sm">{summaryTitle}</h3>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setSummaryActive(false)}
+                                    aria-label="Close modal"
+                                    title="Close modal"
+                                    className="h-8 w-8 bg-gray-50 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full flex items-center justify-center transition-all"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="p-8 overflow-y-auto space-y-4 max-h-[60vh] custom-scrollbar">
+                                <div 
+                                    className="space-y-4"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(summaryText) }}
+                                />
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50">
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(summaryText);
+                                        toast.success("Summary copied to clipboard!");
+                                    }}
+                                    className="flex items-center text-xs font-bold text-gray-500 hover:text-purple-600 transition-colors"
+                                >
+                                    <Clipboard className="h-4 w-4 mr-2" />
+                                    Copy Summary
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setSummaryActive(false);
+                                        if (typeof window !== 'undefined') {
+                                            window.speechSynthesis.cancel();
+                                            
+                                            // Clean markdown symbols for natural vocalization
+                                            const cleanText = summaryText
+                                                .replace(/[#*`_~]/g, '')
+                                                .replace(/-\s+/g, '')
+                                                .trim();
+                                            
+                                            setTtsText(cleanText);
+                                            setTtsTitle(`Summary of ${summaryTitle}`);
+                                            setTtsActive(true);
+                                            setTtsProgress(0);
+                                            
+                                            const utterance = new SpeechSynthesisUtterance(cleanText);
+                                            utterance.rate = ttsSpeed;
+                                            
+                                            let charIndex = 0;
+                                            utterance.onboundary = (event) => {
+                                                if (event.name === 'word') {
+                                                    charIndex = event.charIndex;
+                                                    setTtsProgress(Math.floor((charIndex / cleanText.length) * 100));
+                                                }
+                                            };
+                                            
+                                            utterance.onend = () => {
+                                                setTtsPlaying(false);
+                                                setTtsProgress(100);
+                                            };
+                                            
+                                            utterance.onerror = () => {
+                                                setTtsPlaying(false);
+                                            };
+                                            
+                                            setTtsUtterance(utterance);
+                                            setTtsPlaying(true);
+                                            window.speechSynthesis.speak(utterance);
+                                        }
+                                    }}
+                                    className="flex items-center text-xs bg-purple-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md shadow-purple-500/10"
+                                >
+                                    <Volume2 className="h-4 w-4 mr-2" />
+                                    Listen to Summary
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

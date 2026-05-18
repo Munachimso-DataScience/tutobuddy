@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X } from 'lucide-react';
+import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X, Upload, Image, RefreshCw } from 'lucide-react';
 import axios from 'axios';
-import { account } from '@/lib/appwrite';
+import { account, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 
 interface Question {
@@ -35,10 +35,15 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
     const [essayResult, setEssayResult] = useState<any>(null);
     const [showHint, setShowHint] = useState(false);
     const [hintData, setHintData] = useState<any>(null);
+    
+    // Handwritten OCR States
+    const [essayMode, setEssayMode] = useState<'type' | 'handwritten'>('type');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             await axios.post(`${API_URL}/api/activity/log`, {
                 type: isCorrect ? 'quiz_correct' : 'quiz_incorrect',
                 details: {
@@ -67,7 +72,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         if (currentQuestion.type === 'mcq' && !isCorrect) {
             setLoadingAI(true);
             try {
-                const { jwt } = await account.createJWT();
+                const jwt = await getCachedJWT();
                 const res = await axios.post(`${API_URL}/api/feedback/explain`, {
                     question: currentQuestion.question,
                     userAnswer: answer,
@@ -87,6 +92,49 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         setShowExplanation(true);
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleHandwrittenSubmit = async () => {
+        if (!selectedFile) return;
+
+        setLoadingAI(true);
+        setAiFeedback(null);
+        setEssayResult(null);
+        setShowExplanation(true);
+
+        try {
+            const jwt = await getCachedJWT();
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('question', currentQuestion.question);
+            formData.append('referenceAnswer', currentQuestion.answer || '');
+
+            const res = await axios.post(`${API_URL}/api/quizzes/evaluate-handwritten`, formData, {
+                headers: { 
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${jwt}` 
+                }
+            });
+            
+            setEssayResult(res.data);
+            setAiFeedback(res.data.feedback);
+        } catch (error) {
+            console.error('Failed to evaluate handwritten answer:', error);
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     const handleEssaySubmit = async () => {
         const answer = answers[currentIndex];
         if (!answer) return;
@@ -97,7 +145,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         setShowExplanation(true);
 
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             const res = await axios.post(`${API_URL}/api/quizzes/evaluate-essay`, {
                 question: currentQuestion.question,
                 studentAnswer: answer,
@@ -122,6 +170,9 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
             setAiFeedback(null);
             setExplanationData(null);
             setEssayResult(null);
+            setSelectedFile(null);
+            setImagePreview(null);
+            setEssayMode('type');
         } else {
             setIsFinished(true);
             // Calculate score for MCQs
@@ -136,7 +187,7 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
     const handleGetHint = async () => {
         setLoadingAI(true);
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             const res = await axios.post(`${API_URL}/api/feedback/hint`, {
                 correct_answer: currentQuestion.answer,
                 question: currentQuestion.question
@@ -208,7 +259,14 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                             animate={{ opacity: 1, y: 0 }}
                             className="mb-8 p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/20 rounded-2xl relative"
                         >
-                            <button onClick={() => setShowHint(false)} className="absolute top-2 right-2 text-orange-400 hover:text-orange-600"><X className="h-4 w-4"/></button>
+                            <button 
+                                onClick={() => setShowHint(false)} 
+                                aria-label="Close hint"
+                                title="Close hint"
+                                className="absolute top-2 right-2 text-orange-400 hover:text-orange-600"
+                            >
+                                <X className="h-4 w-4"/>
+                            </button>
                             <div className="flex items-center text-orange-700 dark:text-orange-400 font-bold text-xs mb-2">
                                 <Lightbulb className="h-4 w-4 mr-2" />
                                 AI CONCEPT HINT
@@ -282,22 +340,103 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
 
                     {currentQuestion.type === 'essay' && (
                         <div className="space-y-4">
-                            <textarea 
-                                rows={6}
-                                disabled={showExplanation}
-                                placeholder="Write your essay here... AI will evaluate it based on your material."
-                                className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 outline-none font-medium transition-all"
-                                onChange={(e) => setAnswers({ ...answers, [currentIndex]: e.target.value })}
-                            />
+                            {/* Essay Mode Tabs */}
                             {!showExplanation && (
-                                <button 
-                                    disabled={!answers[currentIndex] || loadingAI}
-                                    onClick={handleEssaySubmit}
-                                    className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center disabled:opacity-50"
-                                >
-                                    {loadingAI ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
-                                    Submit Essay & Evaluate
-                                </button>
+                                <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl max-w-xs mb-4">
+                                    <button 
+                                        onClick={() => setEssayMode('type')}
+                                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${essayMode === 'type' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                                    >
+                                        Type Answer
+                                    </button>
+                                    <button 
+                                        onClick={() => setEssayMode('handwritten')}
+                                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${essayMode === 'handwritten' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                                    >
+                                        Handwritten Answer
+                                    </button>
+                                </div>
+                            )}
+
+                            {essayMode === 'type' ? (
+                                <div className="space-y-4">
+                                    <textarea 
+                                        rows={6}
+                                        disabled={showExplanation}
+                                        placeholder="Write your essay here... AI will evaluate it based on your material."
+                                        className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 outline-none font-medium transition-all"
+                                        onChange={(e) => setAnswers({ ...answers, [currentIndex]: e.target.value })}
+                                    />
+                                    {!showExplanation && (
+                                        <button 
+                                            disabled={!answers[currentIndex] || loadingAI}
+                                            onClick={handleEssaySubmit}
+                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm flex items-center disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm"
+                                        >
+                                            {loadingAI ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                                            Submit Essay & Evaluate
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Upload Area / Dropzone */}
+                                    {!showExplanation ? (
+                                        <label className={`
+                                            flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl p-8 cursor-pointer transition-all
+                                            hover:bg-gray-50 dark:hover:bg-gray-800/40 bg-gray-50/50 dark:bg-gray-800/10
+                                            ${loadingAI ? 'pointer-events-none opacity-50' : ''}
+                                        `}>
+                                            {imagePreview ? (
+                                                <div className="relative group max-w-xs rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+                                                    <img 
+                                                        src={imagePreview} 
+                                                        alt="Handwritten Answer Preview" 
+                                                        className="w-full h-auto object-cover max-h-48"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                        <RefreshCw className="h-6 w-6 text-white animate-spin-slow" />
+                                                        <span className="text-white text-xs font-bold ml-2">Change Image</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-10 w-10 mb-4 text-blue-600 stroke-[1.5]" />
+                                                    <span className="text-sm font-bold text-gray-600 dark:text-gray-300">Upload handwritten answer image</span>
+                                                    <span className="text-[10px] mt-2 text-gray-400 font-bold uppercase tracking-wider">Supports JPEG, PNG, WEBP</span>
+                                                </>
+                                            )}
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                            />
+                                        </label>
+                                    ) : (
+                                        // Preview inside results screen
+                                        imagePreview && (
+                                            <div className="max-w-xs rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+                                                <img 
+                                                    src={imagePreview} 
+                                                    alt="Handwritten Answer Submitted" 
+                                                    className="w-full h-auto object-cover max-h-48"
+                                                />
+                                            </div>
+                                        )
+                                    )}
+
+                                    {!showExplanation && (
+                                        <button 
+                                            disabled={!selectedFile || loadingAI}
+                                            onClick={handleHandwrittenSubmit}
+                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm flex items-center disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm"
+                                        >
+                                            {loadingAI ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                                            Evaluate Handwritten Answer
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
@@ -336,6 +475,15 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                                             </div>
                                         </div>
                                     )}
+                                    {essayResult?.extracted_text && (
+                                        <div className="bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-blue-200/50 dark:border-blue-900/30">
+                                            <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Transcribed Handwriting</span>
+                                            <p className="text-xs text-blue-900/80 dark:text-blue-200/80 font-mono italic leading-relaxed">
+                                                "{essayResult.extracted_text}"
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-4 rounded-xl">
                                         {aiFeedback || currentQuestion.explanation || currentQuestion.rubric}
                                     </p>

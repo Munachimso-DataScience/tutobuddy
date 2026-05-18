@@ -6,10 +6,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
 import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
-import { uploadMaterial, getMaterials, deleteMaterial } from './controllers/materialController';
+import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes } from './controllers/quizController';
-import { evaluateEssay } from './controllers/essayController';
+import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
 import { getExplanation, getHint } from './controllers/feedbackController';
 import { checkInactivity, generateWeeklyReports } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
@@ -66,6 +66,8 @@ app.delete('/api/courses/:id', authMiddleware, deleteCourse);
 app.post('/api/materials/upload', authMiddleware, upload.single('file'), uploadMaterial);
 app.get('/api/materials/:courseId', authMiddleware, getMaterials);
 app.delete('/api/materials/:id', authMiddleware, deleteMaterial);
+app.get('/api/materials/:id/text', authMiddleware, getMaterialText);
+app.post('/api/materials/:id/summarize', authMiddleware, summarizeMaterial);
 
 // Activity Logging Routes
 app.post('/api/activity/log', authMiddleware, logActivity);
@@ -74,6 +76,7 @@ app.get('/api/activity/stats', authMiddleware, getStats);
 // Quiz Routes
 app.post('/api/quizzes/generate', authMiddleware, generateQuiz);
 app.post('/api/quizzes/evaluate-essay', authMiddleware, evaluateEssay);
+app.post('/api/quizzes/evaluate-handwritten', authMiddleware, upload.single('file'), evaluateHandwrittenAnswer);
 app.get('/api/quizzes/:materialId', authMiddleware, getQuizzes);
 
 // Feedback Routes

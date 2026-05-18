@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { account } from '@/lib/appwrite';
+import { account, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import CourseCard from '@/components/courses/CourseCard';
 import { Plus, Search, Loader2, X, BookPlus, FileText, Upload } from 'lucide-react';
@@ -34,7 +34,7 @@ export default function CoursesPage() {
     const fetchCourses = async () => {
         try {
             console.log('Fetching courses - Generating JWT...');
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             console.log('JWT generated successfully');
             
             const response = await axios.get(`${API_URL}/api/courses`, {
@@ -53,7 +53,7 @@ export default function CoursesPage() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const { jwt } = await account.createJWT();
+            const jwt = await getCachedJWT();
             const formData = new FormData();
             formData.append('title', title);
             formData.append('code', code);
@@ -160,14 +160,15 @@ export default function CoursesPage() {
                         >
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
                                 <h3 className="text-lg font-bold">Add New Course</h3>
-                                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close Modal" aria-label="Close Modal">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
                             <form onSubmit={handleAddCourse} className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Name</label>
+                                    <label htmlFor="course-name" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Name</label>
                                     <input
+                                        id="course-name"
                                         required
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
@@ -176,8 +177,9 @@ export default function CoursesPage() {
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Code</label>
+                                    <label htmlFor="course-code" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Code</label>
                                     <input
+                                        id="course-code"
                                         required
                                         value={code}
                                         onChange={(e) => setCode(e.target.value)}
@@ -186,8 +188,9 @@ export default function CoursesPage() {
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</label>
+                                    <label htmlFor="course-description" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</label>
                                     <textarea
+                                        id="course-description"
                                         rows={2}
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
@@ -197,11 +200,13 @@ export default function CoursesPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
+                                        <label htmlFor="course-category" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
                                         <select
+                                            id="course-category"
                                             value={category}
                                             onChange={(e) => setCategory(e.target.value)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all appearance-none"
+                                            title="Select Course Category"
                                         >
                                             {categories.map(cat => (
                                                 <option key={cat} value={cat}>{cat}</option>
@@ -209,12 +214,14 @@ export default function CoursesPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Exam Date</label>
+                                        <label htmlFor="course-exam-date" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Exam Date</label>
                                         <input
+                                            id="course-exam-date"
                                             type="date"
                                             value={examDate}
                                             onChange={(e) => setExamDate(e.target.value)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
+                                            title="Select Exam Date"
                                         />
                                     </div>
                                 </div>
@@ -243,10 +250,13 @@ export default function CoursesPage() {
                                     {uploadMethod === 'file' ? (
                                         <div className="relative border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl p-4 transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                             <input
+                                                id="course-file-upload"
                                                 type="file"
                                                 onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
                                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                                 accept=".pdf,.docx,.doc,.txt"
+                                                title="Choose Course Material File"
+                                                aria-label="Choose Course Material File"
                                             />
                                             <div className="flex flex-col items-center justify-center space-y-2 py-2">
                                                 <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center">

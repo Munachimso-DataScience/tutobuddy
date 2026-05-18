@@ -87,3 +87,98 @@ export const deleteMaterial = async (req: any, res: any) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+const getAiUrl = () => {
+    let envUrl = process.env.AI_SERVICE_URL;
+    if (envUrl && envUrl.endsWith('/')) {
+        envUrl = envUrl.slice(0, -1);
+    }
+    const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
+    if (isRender) {
+        if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
+            return 'http://tutobuddy-ai:8000';
+        }
+    }
+    return envUrl || 'http://localhost:8000';
+};
+
+import axios from 'axios';
+
+const extractTextFromMaterial = async (material: any): Promise<string> => {
+    if (material.content) {
+        return material.content;
+    }
+
+    if (!material.file_id || material.file_id === 'pasted_text') {
+        throw new Error('No content or file found for this material');
+    }
+
+    const AI_URL = getAiUrl();
+    console.log(`Downloading file ${material.file_id} from Appwrite for text extraction...`);
+    const fileContent = await storage.getFileDownload(BUCKET_ID, material.file_id);
+    
+    const formData = new (require('form-data'))();
+    const buffer = Buffer.from(fileContent);
+
+    formData.append('file', buffer, {
+        filename: `material.${material.type || 'txt'}`,
+        contentType: material.type === 'pdf' ? 'application/pdf' : material.type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'text/plain',
+    });
+
+    console.log(`Sending file to AI for extraction...`);
+    const extractionRes = await axios.post(`${AI_URL}/extract-text`, formData, {
+        headers: { ...formData.getHeaders() },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 180000 
+    });
+    
+    const text = extractionRes.data.text;
+    
+    // Cache the extracted text back into the Appwrite document to avoid subsequent slow requests!
+    try {
+        console.log(`Caching extracted text back into Appwrite for material ${material.$id}...`);
+        await databases.updateDocument(DATABASE_ID, COLLECTIONS.MATERIALS, material.$id, {
+            content: text.substring(0, 64000)
+        });
+    } catch (dbErr: any) {
+        console.warn(`Failed to cache extracted text: ${dbErr.message}`);
+    }
+
+    return text;
+};
+
+export const getMaterialText = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        
+        const text = await extractTextFromMaterial(material);
+        
+        res.status(200).json({ text });
+    } catch (error: any) {
+        console.error('getMaterialText error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const summarizeMaterial = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        
+        const text = await extractTextFromMaterial(material);
+        
+        const AI_URL = getAiUrl();
+        console.log(`Requesting summary from AI...`);
+        const summaryRes = await axios.post(`${AI_URL}/summarize`, {
+            text: text
+        }, { timeout: 180000 });
+        
+        res.status(200).json({ summary: summaryRes.data.summary });
+    } catch (error: any) {
+        console.error('summarizeMaterial error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};
+

@@ -41,3 +41,56 @@ export const evaluateEssay = async (req: any, res: any) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+import fs from 'fs';
+
+export const evaluateHandwrittenAnswer = async (req: any, res: any) => {
+    const AI_URL = getAiUrl();
+    try {
+        const file = req.file;
+        const { question, referenceAnswer } = req.body;
+        
+        if (!file) {
+            return res.status(400).json({ error: 'No image file uploaded' });
+        }
+        
+        // Prepare multipart form data for Python AI service
+        const formData = new (require('form-data'))();
+        const fileBuffer = fs.readFileSync(file.path);
+        
+        formData.append('file', fileBuffer, {
+            filename: file.originalname,
+            contentType: file.mimetype
+        });
+        
+        formData.append('question', question);
+        formData.append('reference_answer', referenceAnswer || '');
+        
+        console.log(`Sending handwritten answer image to AI microservice for OCR & Evaluation...`);
+        const response = await axios.post(`${AI_URL}/evaluate-handwritten`, formData, {
+            headers: { ...formData.getHeaders() },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+            timeout: 180000 
+        });
+        
+        // Clean up temp file
+        try {
+            fs.unlinkSync(file.path);
+        } catch (cleanupErr) {
+            console.warn('Failed to delete temp file:', cleanupErr);
+        }
+        
+        res.status(200).json(response.data);
+    } catch (error: any) {
+        console.error('evaluateHandwrittenAnswer error:', error.response?.data || error.message);
+        // Ensure temp file is cleaned up even on failure
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (e) {}
+        }
+        res.status(500).json({ error: error.message });
+    }
+};
+

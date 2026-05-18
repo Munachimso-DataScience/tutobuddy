@@ -14,6 +14,8 @@ import re
 import gc
 import tempfile
 import shutil
+import json
+import google.generativeai as genai
 
 # Download NLTK data
 def download_nltk():
@@ -34,6 +36,68 @@ def download_nltk():
 download_nltk()
 
 load_dotenv()
+
+# Configure Google Gemini
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+gemini_available = False
+if GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_available = True
+        print("Google Gemini API successfully configured!")
+    except Exception as e:
+        print(f"Error configuring Google Gemini: {e}")
+
+def get_gemini_model(model_name="gemini-2.5-flash"):
+    """
+    Returns a configured GenerativeModel with a robust fallback chain.
+    """
+    try:
+        return genai.GenerativeModel(model_name)
+    except Exception as e:
+        print(f"Failed to load primary model {model_name}: {e}. Trying fallback chain...")
+        try:
+            return genai.GenerativeModel("gemini-2.5-flash")
+        except Exception:
+            try:
+                return genai.GenerativeModel("gemini-2.0-flash")
+            except Exception:
+                try:
+                    return genai.GenerativeModel("gemini-pro-latest")
+                except Exception:
+                    return genai.GenerativeModel("gemini-1.5-flash")
+
+def strip_json_markdown(text: str) -> str:
+    """
+    Strips markdown code block wrappers (like ```json ... ```) from JSON response strings.
+    """
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    
+    start_brace = text.find("{")
+    start_bracket = text.find("[")
+    
+    start_idx = -1
+    end_idx = -1
+    
+    if start_brace != -1 and (start_bracket == -1 or start_brace < start_bracket):
+        start_idx = start_brace
+        end_idx = text.rfind("}")
+    elif start_bracket != -1:
+        start_idx = start_bracket
+        end_idx = text.rfind("]")
+        
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        text = text[start_idx:end_idx+1]
+        
+    return text
+
 
 app = FastAPI()
 
@@ -364,7 +428,89 @@ async def generate_quiz(data: dict):
         if len(text) > 30000:
             print(f"Truncating text from {len(text)} to 30,000 chars for performance.")
             text = text[:30000]
-            
+
+        # --- Premium Google Gemini Path ---
+        if gemini_available:
+            print("Running Premium Gemini Quiz Generator...")
+            try:
+                model = get_gemini_model("gemini-2.5-flash")
+                prompt = f"""
+                Generate a study quiz based on the text below. 
+                The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
+                
+                For MCQs:
+                - The questions must be deep, conceptual, and check real-world logic or application.
+                - Avoid simple blank fill-ins or direct word matching.
+                - Each MCQ must have exactly 4 options.
+                - The "options" list must contain the plain texts.
+                - The "formatted_options" list must be prefixed with "A. ", "B. ", "C. ", "D. ".
+                - One option must be the correct answer.
+                - "correct_letter" must be 'A', 'B', 'C', or 'D', matching the correct option.
+                - Include a detailed educational "explanation" for why it is correct.
+                - A quality "score" between 80 and 100.
+                
+                For Essays:
+                - The questions must ask the student to explain core concepts, relationships between mechanisms, or summary of main themes in the text.
+                - "context" must be a supporting reference sentence from the text.
+                - "answer" must be a comprehensive reference master answer.
+                - "explanation" must be educational criteria for a correct response.
+                
+                Output the result STRICTLY as a JSON object matching this schema:
+                {{
+                  "questions": [
+                     {{
+                       "type": "mcq",
+                       "question": "question text",
+                       "options": ["option 1", "option 2", "option 3", "option 4"],
+                       "formatted_options": ["A. option 1", "B. option 2", "C. option 3", "D. option 4"],
+                       "answer": "option text matching the correct answer",
+                       "correct_letter": "A",
+                       "explanation": "detailed educational explanation of why it is correct",
+                       "score": 95
+                     }},
+                     ...
+                     {{
+                       "type": "essay",
+                       "question": "conceptual question about core themes",
+                       "context": "supporting context from the text",
+                       "answer": "comprehensive reference master answer",
+                       "explanation": "educational criteria for a correct response"
+                     }}
+                  ]
+                }}
+                
+                Source material text:
+                {text}
+                """
+                
+                try:
+                    response = model.generate_content(
+                        prompt,
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                except Exception as first_err:
+                    print(f"Quiz generation with primary model failed ({first_err}), attempting fallback...")
+                    fallback_model = get_gemini_model("gemini-2.0-flash")
+                    try:
+                        response = fallback_model.generate_content(
+                            prompt,
+                            generation_config={"response_mime_type": "application/json"}
+                        )
+                    except Exception:
+                        response = fallback_model.generate_content(prompt)
+                
+                text_content = strip_json_markdown(response.text)
+                quiz_data = json.loads(text_content)
+                if "questions" in quiz_data and len(quiz_data["questions"]) > 0:
+                    print(f"Gemini Quiz Generation successful! Generated {len(quiz_data['questions'])} questions.")
+                    return {"quiz": quiz_data}
+                else:
+                    print("Gemini response did not contain questions. Falling back to local NLTK...")
+            except Exception as e:
+                print(f"Gemini quiz generation failed ({e}). Falling back to local NLTK...")
+
+        # --- Local NLTK Fallback Path ---
+        print("Running Local NLTK Quiz Generator...")
         sentences = preprocess_text(text)
         if not sentences:
             raise HTTPException(status_code=400, detail="Text too short or invalid to generate questions")
@@ -600,6 +746,215 @@ async def evaluate_essay(data: dict):
     except Exception as e:
         print(f"Essay Evaluation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/summarize")
+async def summarize(data: dict):
+    try:
+        text = data.get("text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="No text provided")
+            
+        if gemini_available:
+            print("Generating Premium Gemini Summary...")
+            try:
+                model = get_gemini_model("gemini-2.5-flash")
+                prompt = f"""
+                Create a structured, highly educational, and comprehensive summary of the study notes/material provided below.
+                The summary MUST be beautifully formatted in GitHub-flavored Markdown.
+                Include the following sections:
+                - 💡 **Core Concepts**: Define the most important vocabulary, theories, and concepts.
+                - 📌 **Key Takeaways**: Bullet points highlighting the main arguments, mechanisms, or rules.
+                - 📖 **Detailed Summary**: A clear narrative explaining the text in detail, breaking it down into logical subsections.
+                
+                Keep the tone encouraging, academic, and engaging.
+                
+                Source text to summarize:
+                {text}
+                """
+                try:
+                    response = model.generate_content(prompt)
+                except Exception as first_err:
+                    print(f"Summary generation with primary model failed ({first_err}), attempting fallback...")
+                    fallback_model = get_gemini_model("gemini-2.0-flash")
+                    response = fallback_model.generate_content(prompt)
+                return {"summary": response.text}
+            except Exception as e:
+                print(f"Gemini summary generation failed: {e}. Falling back to local summarization.")
+                
+        # --- Local Fallback Summarization ---
+        print("Generating Local NLTK Summary...")
+        # clean extra spaces and split sentences
+        clean_text = re.sub(r'\s+', ' ', text).strip()
+        sentences = sent_tokenize(clean_text)
+        if not sentences:
+            return {"summary": "### Empty Material\n\nNo text content was found in this study material to summarize."}
+            
+        words = word_tokenize(clean_text.lower())
+        stop_words = set(['the', 'a', 'is', 'are', 'in', 'at', 'on', 'of', 'and', 'for', 'with', 'this', 'that', 'to', 'it', 'from', 'an', 'by', 'as', 'was', 'were', 'or'])
+        freq_dict = {}
+        for w in words:
+            if w.isalnum() and w not in stop_words:
+                freq_dict[w] = freq_dict.get(w, 0) + 1
+                
+        sentence_scores = {}
+        for sent in sentences:
+            if len(sent.split()) < 8: continue
+            for word in word_tokenize(sent.lower()):
+                if word in freq_dict:
+                    sentence_scores[sent] = sentence_scores.get(sent, 0) + freq_dict[word]
+                    
+        top_sentences = sorted(sentence_scores, key=sentence_scores.get, reverse=True)[:5]
+        summary_text = "\n\n".join(top_sentences)
+        
+        markdown_summary = "### 💡 Core Concepts & Summary (Offline Fallback)\n\n"
+        markdown_summary += "Below are the key sentences extracted from your material using text frequency analysis:\n\n"
+        for i, sent in enumerate(top_sentences):
+            markdown_summary += f" - {sent}\n"
+            
+        return {"summary": markdown_summary}
+    except Exception as e:
+        print(f"Summarization Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/evaluate-handwritten")
+async def evaluate_handwritten(
+    file: UploadFile = File(...),
+    question: str = File(...),
+    reference_answer: str = File(...)
+):
+    try:
+        filename = file.filename.lower()
+        print(f"--- Evaluate Handwritten: {filename} ---")
+        img_bytes = await file.read()
+        
+        # --- Premium Gemini Vision Path ---
+        if gemini_available:
+            print("Evaluating Handwritten Answer via Gemini Vision...")
+            try:
+                model = get_gemini_model("gemini-2.5-flash")
+                image_part = {
+                    "mime_type": file.content_type or "image/png",
+                    "data": img_bytes
+                }
+                prompt = f"""
+                Analyze this handwritten answer to the following academic essay question.
+                
+                Question: "{question}"
+                Reference/Master Answer Context: "{reference_answer}"
+                
+                Please perform the following actions:
+                1. Transcribe the handwritten text from the image as accurately as possible into "extracted_text".
+                2. Evaluate the correctness of the answer against the reference answer.
+                3. Grade the answer on a scale of 0 to 100 as "score".
+                4. Set "relevance" to "High", "Medium", or "Low" based on how well they addressed the core question.
+                5. Provide supportive, constructive "feedback" explaining what they got right and what was missing.
+                6. Give concrete "improvement_tips" for how they can secure a higher score next time.
+                7. Provide a "master_concept" summarizing the ideal understanding.
+                
+                Output the evaluation strictly as a JSON object matching this schema:
+                {{
+                  "extracted_text": "the exact transcribed handwriting",
+                  "score": 85,
+                  "relevance": "High",
+                  "feedback": "...",
+                  "improvement_tips": "...",
+                  "master_concept": "...",
+                  "links": [
+                     {{"title": "Khan Academy Tutorial", "url": "https://www.khanacademy.org/search?page_search_query=handwritten"}}
+                  ]
+                }}
+                """
+                try:
+                    response = model.generate_content(
+                        [image_part, prompt],
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                except Exception as first_err:
+                    print(f"Handwritten vision evaluation with primary model failed ({first_err}), attempting fallback...")
+                    fallback_model = get_gemini_model("gemini-2.0-flash")
+                    try:
+                        response = fallback_model.generate_content(
+                            [image_part, prompt],
+                            generation_config={"response_mime_type": "application/json"}
+                        )
+                    except Exception:
+                        response = fallback_model.generate_content([image_part, prompt])
+                
+                text_content = strip_json_markdown(response.text)
+                result = json.loads(text_content)
+                print(f"Gemini vision grading complete! Score: {result.get('score')}%")
+                return result
+            except Exception as gemini_err:
+                print(f"Gemini vision grading failed: {gemini_err}. Falling back to Tesseract...")
+
+        # --- Local Tesseract Fallback Path ---
+        print("Evaluating Handwritten Answer via Local Tesseract + NLP...")
+        from PIL import Image
+        import io
+        
+        try:
+            image = Image.open(io.BytesIO(img_bytes))
+            extracted_text = pytesseract.image_to_string(image)
+        except Exception as ocr_err:
+            print(f"Local Tesseract OCR failed: {ocr_err}")
+            extracted_text = ""
+            
+        topic_match = re.search(r"'(.*?)'", question)
+        topic = topic_match.group(1) if topic_match else "this concept"
+        
+        if not extracted_text or len(extracted_text.strip()) < 5:
+            return {
+                "extracted_text": "",
+                "score": 0,
+                "relevance": "None",
+                "feedback": "Your handwritten answer image was processed, but no valid text could be extracted. Please make sure the image is clear, upright, and well-lit.",
+                "improvement_tips": "Try taking the picture again in a well-lit environment and focus the camera on the text.",
+                "master_concept": f"Based on the material, '{topic}' is described as: \"{reference_answer}\"",
+                "links": []
+            }
+            
+        # Score calculation (overlap logic)
+        context_words = set(word_tokenize(reference_answer.lower()))
+        student_words = set(word_tokenize(extracted_text.lower()))
+        overlap = student_words.intersection(context_words)
+        
+        stop_words = set(['the', 'a', 'is', 'are', 'in', 'at', 'on', 'of', 'and', 'for', 'with', 'this', 'that', 'to', 'it', 'from', 'an'])
+        meaningful_overlap = [w for w in overlap if len(w) > 3 and w not in stop_words]
+        
+        score = min(len(meaningful_overlap) * 25, 100) 
+        relevance = "High" if score >= 75 else "Medium" if score >= 40 else "Low"
+        
+        feedback = f"Local OCR Evaluation for '{topic}': "
+        if meaningful_overlap:
+            feedback += f"We detected these matching keywords in your handwriting: {', '.join(meaningful_overlap[:3])}. "
+        else:
+            feedback += "No clear concept overlap detected in the transcribed text."
+            
+        if score < 50:
+            tips = "Ensure your handwritten answer includes specific key terms and definitions from the study notes."
+        else:
+            tips = "Excellent handwriting match! You hit the core concepts."
+            
+        safe_query = re.sub(r'[^a-zA-Z0-9\s]', '', topic).strip().replace(' ', '+')
+        links = [
+            { "title": f"YouTube Explanation", "url": f"https://www.youtube.com/results?search_query={safe_query}", "type": "video" },
+            { "title": f"Google Search", "url": f"https://www.google.com/search?q={safe_query}", "type": "article" }
+        ]
+        
+        return {
+            "extracted_text": extracted_text,
+            "score": score,
+            "relevance": relevance,
+            "feedback": feedback,
+            "improvement_tips": tips,
+            "master_concept": f"The material definition for reference: {reference_answer}",
+            "links": links
+        }
+    except Exception as e:
+        print(f"Handwritten Evaluation Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await file.close()
 
 if __name__ == "__main__":
     import uvicorn
