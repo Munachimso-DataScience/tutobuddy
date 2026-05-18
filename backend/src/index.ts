@@ -10,9 +10,11 @@ import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summariz
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes } from './controllers/quizController';
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
+import { evaluateOcr } from './controllers/ocrController';
 import { getExplanation, getHint } from './controllers/feedbackController';
 import { checkInactivity, generateWeeklyReports } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
+import { getLeaderboard } from './controllers/leaderboardController';
 import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
 import { getSchedules, createSchedule, deleteSchedule } from './controllers/scheduleController';
 import { initScheduler } from './utils/scheduler';
@@ -79,6 +81,9 @@ app.post('/api/quizzes/evaluate-essay', authMiddleware, evaluateEssay);
 app.post('/api/quizzes/evaluate-handwritten', authMiddleware, upload.single('file'), evaluateHandwrittenAnswer);
 app.get('/api/quizzes/:materialId', authMiddleware, getQuizzes);
 
+// OCR Routes
+app.post('/api/ocr/evaluate', upload.single('file'), evaluateOcr);
+
 // Feedback Routes
 app.post('/api/feedback/explain', authMiddleware, getExplanation);
 app.post('/api/feedback/hint', authMiddleware, getHint);
@@ -90,6 +95,9 @@ app.post('/api/notifications/weekly-report', authMiddleware, generateWeeklyRepor
 // Analytics Routes
 app.get('/api/analytics/weakness', authMiddleware, getWeaknessAnalysis);
 app.get('/api/analytics/weaknesses', authMiddleware, getWeaknessAnalysis);
+
+// Leaderboard Routes
+app.get('/api/leaderboard', authMiddleware, getLeaderboard);
 
 // Task Routes
 app.get('/api/tasks', authMiddleware, getTasks);

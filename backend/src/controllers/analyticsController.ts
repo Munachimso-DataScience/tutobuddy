@@ -34,20 +34,55 @@ export const getWeaknessAnalysis = async (req: Request, res: Response) => {
         }
 
         // Filter for "incorrect" events and parse details
+        const normalizeText = (value: unknown) => {
+            if (typeof value !== 'string') return '';
+            const trimmed = value.trim();
+            if (!trimmed) return '';
+
+            const generic = new Set([
+                'unknown',
+                'unknown question',
+                'n/a',
+                'na',
+                'question',
+                'answer'
+            ]);
+
+            return generic.has(trimmed.toLowerCase()) ? '' : trimmed;
+        };
+
         const incorrectData = activity.documents
             .filter(doc => doc.type === 'quiz_incorrect')
             .map(doc => {
                 try {
                     const details = JSON.parse(doc.details || '{}');
+                    const question = normalizeText(
+                        details.question_text ||
+                        details.question ||
+                        details.prompt ||
+                        details.questionTitle ||
+                        details.question_text_content
+                    );
+                    const correctAnswer = normalizeText(
+                        details.correct_answer ||
+                        details.correctAnswer ||
+                        details.answer ||
+                        details.expected_answer
+                    );
+
+                    if (!question && !correctAnswer) {
+                        return null;
+                    }
+
                     return {
-                        question: details.question_text || 'Unknown question',
-                        correct_answer: details.correct_answer || 'N/A'
+                        question: question || 'Study concept',
+                        correct_answer: correctAnswer || 'Review this concept'
                     };
                 } catch (e) {
                     return null;
                 }
             })
-            .filter(item => item !== null);
+            .filter((item): item is { question: string; correct_answer: string } => item !== null);
 
         // 2. Call AI Service
         try {

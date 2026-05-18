@@ -15,14 +15,16 @@ import {
     UserCircle,
     Menu,
     X,
-    ChevronLeft,
-    BarChart3
+    BarChart3,
+    Camera
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
-const SidebarItem = ({ icon: Icon, label, href, active = false, onClick }: { icon: any, label: string, href: string, active?: boolean, onClick?: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, href, active = false, onClick }: { icon: LucideIcon, label: string, href: string, active?: boolean, onClick?: () => void }) => (
     <Link href={href} onClick={onClick}>
         <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 ${active
                 ? 'bg-blue-600 text-white shadow-md'
@@ -44,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
         { icon: BookOpen, label: "My Courses", href: "/dashboard/courses" },
+        { icon: Camera, label: "OCR Scanner", href: "/dashboard/ocr" },
         { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
         { icon: History, label: "Tasks", href: "/dashboard/tasks" },
         { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
@@ -71,10 +74,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                     <div className="p-6 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                            <img src="/logo.png" alt="TutorBuddy Logo" className="h-9 w-9 rounded-lg object-contain shadow-md" />
+                            <Image src="/logo.png" alt="TutorBuddy Logo" width={36} height={36} className="h-9 w-9 rounded-lg object-contain shadow-md" />
                             <span className="text-xl font-bold text-gray-900 dark:text-white">Study Companion</span>
                         </div>
-                        <button onClick={toggleSidebar} className="lg:hidden text-gray-500">
+                        <button
+                            type="button"
+                            onClick={toggleSidebar}
+                            aria-label="Close sidebar"
+                            title="Close sidebar"
+                            className="lg:hidden text-gray-500"
+                        >
                             <X className="h-6 w-6" />
                         </button>
                     </div>
@@ -98,7 +107,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                     <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                         <button
+                            type="button"
                             onClick={logout}
+                            title="Sign out"
+                            aria-label="Sign out"
                             className="flex items-center space-x-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
                         >
                             <LogOut className="h-5 w-5" />
@@ -113,7 +125,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-8 shrink-0">
                         <div className="flex items-center space-x-4">
                             <button 
+                                type="button"
                                 onClick={toggleSidebar}
+                                aria-label="Open sidebar"
+                                title="Open sidebar"
                                 className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400"
                             >
                                 <Menu className="h-6 w-6" />
@@ -129,9 +144,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
 
                         <div className="flex items-center space-x-3 lg:space-x-6">
-                            <button className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors">
+                            <button
+                                type="button"
+                                aria-label="Notifications"
+                                title="Notifications"
+                                className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors"
+                            >
                                 <Bell className="h-5 w-5" />
-                                <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900">
+                                <span
+                                    aria-hidden="true"
+                                    className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900"
+                                >
                                     3
                                 </span>
                             </button>

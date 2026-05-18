@@ -16,6 +16,7 @@ import tempfile
 import shutil
 import json
 import google.generativeai as genai
+import pytesseract
 
 # Download NLTK data
 def download_nltk():
@@ -674,7 +675,16 @@ async def analyze_weakness(data: dict):
         # Use existing POS logic for consistency
         tokens = word_tokenize(all_text)
         tagged = pos_tag(tokens)
-        keywords = [word for word, pos in tagged if pos in ('NN', 'NNS', 'NNP') and len(word) > 4]
+        generic_terms = {
+            'question', 'questions', 'answer', 'answers', 'unknown', 'n/a', 'review',
+            'concept', 'concepts', 'study', 'material', 'materials', 'topic', 'topics'
+        }
+        keywords = [
+            word for word, pos in tagged
+            if pos in ('NN', 'NNS', 'NNP')
+            and len(word) > 4
+            and word.lower() not in generic_terms
+        ]
             
         common = Counter(keywords).most_common(3)
         weaknesses = [k[0] for k in common]
@@ -815,6 +825,102 @@ async def summarize(data: dict):
     except Exception as e:
         print(f"Summarization Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ocr-evaluate")
+async def ocr_evaluate(file: UploadFile = File(...)):
+    """
+    Stand-alone OCR transcription and educational analysis endpoint.
+    Transcribes handwritten or printed notes and estimates word count, readability, and feedback.
+    """
+    try:
+        filename = file.filename.lower()
+        print(f"--- General OCR Scan: {filename} ---")
+        img_bytes = await file.read()
+        
+        # --- Premium Gemini Vision Path ---
+        if gemini_available:
+            print("Processing general OCR via Gemini Vision...")
+            try:
+                model = get_gemini_model("gemini-2.5-flash")
+                image_part = {
+                    "mime_type": file.content_type or "image/png",
+                    "data": img_bytes
+                }
+                prompt = """
+                Analyze this image containing handwritten or printed study notes.
+                
+                Please perform the following actions:
+                1. Transcribe all readable text from the image as accurately as possible into "text". Keep formatting, bullet points, and structure intact.
+                2. Estimate the "word_count" of the transcribed text.
+                3. Classify "readability" as one of: "Highly Legible", "Clear & Legible", "Moderately Clear", or "Hard to Read".
+                4. Provide encouraging, supportive educational "feedback" summarizing the notes, main topics covered, and suggesting next study steps.
+                
+                Output the evaluation strictly as a JSON object matching this schema:
+                {
+                  "text": "the exact transcribed text...",
+                  "evaluation": {
+                    "word_count": 120,
+                    "readability": "Clear & Legible",
+                    "feedback": "..."
+                  }
+                }
+                """
+                try:
+                    response = model.generate_content(
+                        [image_part, prompt],
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                except Exception as first_err:
+                    print(f"General OCR Gemini vision failed ({first_err}), trying fallback model...")
+                    fallback_model = get_gemini_model("gemini-2.0-flash")
+                    response = fallback_model.generate_content(
+                        [image_part, prompt],
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                
+                text_content = strip_json_markdown(response.text)
+                result = json.loads(text_content)
+                print(f"General OCR Gemini transcription complete! Word count: {result.get('evaluation', {}).get('word_count')}")
+                return result
+            except Exception as gemini_err:
+                print(f"General OCR Gemini vision failed: {gemini_err}. Falling back to Tesseract...")
+
+        # --- Local Tesseract Fallback Path ---
+        print("Processing general OCR via Local Tesseract...")
+        from PIL import Image
+        import io
+        
+        try:
+            image = Image.open(io.BytesIO(img_bytes))
+            extracted_text = pytesseract.image_to_string(image)
+        except Exception as ocr_err:
+            print(f"Local Tesseract OCR failed: {ocr_err}")
+            extracted_text = ""
+            
+        if not extracted_text or len(extracted_text.strip()) < 5:
+            return {
+                "text": "",
+                "evaluation": {
+                    "word_count": 0,
+                    "readability": "Unreadable",
+                    "feedback": "Your note image was processed, but no valid text could be extracted. Please make sure the image is clear, upright, and well-lit."
+                }
+            }
+            
+        word_count = len(extracted_text.split())
+        return {
+            "text": extracted_text,
+            "evaluation": {
+                "word_count": word_count,
+                "readability": "Legible (Local OCR)",
+                "feedback": f"Successfully extracted {word_count} words of text from your note using local OCR. You can now use these notes to generate quizzes or summary content!"
+            }
+        }
+    except Exception as e:
+        print(f"General OCR Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await file.close()
 
 @app.post("/evaluate-handwritten")
 async def evaluate_handwritten(
