@@ -36,3 +36,9 @@
 ## Suggested next fix
 - Keep the browser pointed at the backend for OCR and only let the backend talk to the AI service.
 - If deployment changes again, update `AI_SERVICE_URL` in one place instead of touching the frontend.
+
+## Current production failure mode
+- If the browser shows `net::ERR_CONNECTION_CLOSED` for `/api/ocr/evaluate`, the backend is reaching a timeout or cannot reach the AI service.
+- The most likely cause is a bad `AI_SERVICE_URL` in the deployed backend environment.
+- Another common cause is the AI service being cold or unavailable on a free host, which causes the proxy request to be closed before OCR finishes.
+- The browser session being active is unrelated; the login is working and the request is failing later in the OCR chain.

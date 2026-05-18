@@ -2,6 +2,21 @@ import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
 
+const normalizeAiUrl = (url: string) => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+
+    if (trimmed.includes('huggingface.co/spaces/')) {
+        const spacePath = trimmed.split('/spaces/')[1];
+        const [owner, name] = spacePath.split('/').filter(Boolean);
+
+        if (owner && name) {
+            return `https://${owner}-${name}.hf.space`;
+        }
+    }
+
+    return trimmed;
+};
+
 const getAiUrl = () => {
     const envUrl = process.env.AI_SERVICE_URL;
     const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
@@ -11,7 +26,7 @@ const getAiUrl = () => {
             return 'http://tutobuddy-ai:8000';
         }
     }
-    return envUrl || 'http://localhost:8000';
+    return normalizeAiUrl(envUrl || 'http://localhost:8000');
 };
 
 export const evaluateOcr = async (req: any, res: any) => {
