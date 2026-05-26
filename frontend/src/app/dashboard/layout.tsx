@@ -27,8 +27,8 @@ import Image from 'next/image';
 const SidebarItem = ({ icon: Icon, label, href, active = false, onClick }: { icon: LucideIcon, label: string, href: string, active?: boolean, onClick?: () => void }) => (
     <Link href={href} onClick={onClick}>
         <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 ${active
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'bg-primary text-white shadow-md shadow-primary/20'
+                : 'text-foreground/70 dark:text-cream/70 hover:bg-surface-2/70 dark:hover:bg-surface-2/30'
             }`}>
             <Icon className="h-5 w-5" />
             <span className="font-medium text-sm">{label}</span>
@@ -42,6 +42,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { user, logout } = useAuth();
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+    const [showNotifications, setShowNotifications] = React.useState(false);
+    const [notificationSummary, setNotificationSummary] = React.useState({
+        emailAlerts: true,
+        studyReminders: true,
+        weeklySummary: true
+    });
+
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem('tutobuddy-notification-preferences');
+            if (!saved) return;
+
+            const parsed = JSON.parse(saved);
+            setNotificationSummary({
+                emailAlerts: typeof parsed.emailAlerts === 'boolean' ? parsed.emailAlerts : true,
+                studyReminders: typeof parsed.studyReminders === 'boolean' ? parsed.studyReminders : true,
+                weeklySummary: typeof parsed.weeklySummary === 'boolean' ? parsed.weeklySummary : true
+            });
+        } catch {
+            // ignore invalid saved preferences
+        }
+    }, []);
+
+    const activeNotifications = [
+        notificationSummary.emailAlerts && 'Email alerts enabled',
+        notificationSummary.studyReminders && 'Study reminders enabled',
+        notificationSummary.weeklySummary && 'Weekly summaries enabled'
+    ].filter(Boolean) as string[];
 
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -56,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <ProtectedRoute>
-            <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden relative">
+            <div className="flex h-screen bg-linear-to-br from-primary/10 via-background to-secondary/10 text-foreground overflow-hidden relative">
                 {/* Mobile Sidebar Overlay */}
                 <AnimatePresence>
                     {isSidebarOpen && (
@@ -71,18 +99,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </AnimatePresence>
 
                 {/* Sidebar */}
-                <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-surface/95 dark:bg-surface-2/95 border-r border-primary/10 dark:border-primary/20 flex flex-col z-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                     <div className="p-6 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                             <Image src="/logo.png" alt="TutorBuddy Logo" width={36} height={36} className="h-9 w-9 rounded-lg object-contain shadow-md" />
-                            <span className="text-xl font-bold text-gray-900 dark:text-white">Study Companion</span>
+                            <span className="text-xl font-bold text-foreground dark:text-cream">Study Companion</span>
                         </div>
                         <button
                             type="button"
                             onClick={toggleSidebar}
                             aria-label="Close sidebar"
                             title="Close sidebar"
-                            className="lg:hidden text-gray-500"
+                            className="lg:hidden text-foreground/60"
                         >
                             <X className="h-6 w-6" />
                         </button>
@@ -100,18 +128,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             />
                         ))}
                         <div className="pt-4 pb-2 px-4">
-                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</span>
+                            <span className="text-xs font-semibold text-foreground/40 uppercase tracking-wider">Account</span>
                         </div>
                         <SidebarItem icon={Settings} label="Settings" href="/dashboard/settings" active={pathname === '/dashboard/settings'} onClick={() => setIsSidebarOpen(false)} />
                     </nav>
 
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                    <div className="p-4 border-t border-primary/10 dark:border-primary/20">
                         <button
                             type="button"
                             onClick={logout}
                             title="Sign out"
                             aria-label="Sign out"
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-secondary hover:bg-secondary/10 rounded-xl transition-colors"
                         >
                             <LogOut className="h-5 w-5" />
                             <span className="font-medium text-sm">Sign Out</span>
@@ -122,14 +150,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col overflow-hidden w-full">
                     {/* Header */}
-                    <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-8 shrink-0">
+                    <header className="relative h-16 bg-surface/90 dark:bg-surface-2/90 border-b border-primary/10 dark:border-primary/20 flex items-center justify-between px-4 lg:px-8 shrink-0">
                         <div className="flex items-center space-x-4">
                             <button 
                                 type="button"
                                 onClick={toggleSidebar}
                                 aria-label="Open sidebar"
                                 title="Open sidebar"
-                                className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400"
+                                className="lg:hidden p-2 hover:bg-surface-2/70 dark:hover:bg-surface-2/30 rounded-lg text-foreground/70 dark:text-cream/70"
                             >
                                 <Menu className="h-6 w-6" />
                             </button>
@@ -138,7 +166,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <input
                                     type="text"
                                     placeholder="Search courses, materials..."
-                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                                    className="w-full pl-10 pr-4 py-2 bg-background/70 dark:bg-background/20 border-none rounded-lg text-sm focus:ring-2 focus:ring-secondary transition-all font-medium"
                                 />
                             </div>
                         </div>
@@ -148,27 +176,58 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 type="button"
                                 aria-label="Notifications"
                                 title="Notifications"
-                                className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors"
+                                onClick={() => setShowNotifications((prev) => !prev)}
+                                className="relative p-2 text-foreground/60 hover:text-foreground dark:text-cream/60 dark:hover:text-cream transition-colors"
                             >
                                 <Bell className="h-5 w-5" />
                                 <span
                                     aria-hidden="true"
-                                    className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900"
+                                    className="absolute top-1 right-1 h-4 min-w-4 px-1 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900"
                                 >
-                                    3
+                                    {activeNotifications.length}
                                 </span>
                             </button>
-                            <div className="flex items-center space-x-3 border-l border-gray-200 dark:border-gray-800 pl-4 lg:pl-6 h-8">
+                            {showNotifications && (
+                                <div className="absolute right-4 top-16 z-50 w-80 rounded-3xl border border-primary/10 bg-surface/95 dark:bg-surface-2/95 p-4 shadow-2xl shadow-black/10 backdrop-blur-xl">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-foreground dark:text-cream">Notifications</p>
+                                            <p className="text-xs text-foreground/50 dark:text-cream/50">Your study reminders and email alerts</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNotifications(false)}
+                                            className="text-foreground/40 hover:text-foreground dark:text-cream/40 dark:hover:text-cream"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {activeNotifications.length > 0 ? (
+                                            activeNotifications.map((item) => (
+                                                <div key={item} className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground dark:text-cream">
+                                                    {item}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
+                                                No active reminders yet. Save your notification settings to turn them on.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center space-x-3 border-l border-primary/10 dark:border-primary/20 pl-4 lg:pl-6 h-8">
                                 <div className="hidden sm:block text-right">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[120px]">
+                                    <p className="text-sm font-semibold text-foreground dark:text-cream truncate max-w-[120px]">
                                         {user?.name || 'Student'}
                                     </p>
-                                    <p className="text-xs text-gray-500 font-medium capitalize">
+                                    <p className="text-xs text-foreground/50 font-medium capitalize">
                                         Free Tier
                                     </p>
                                 </div>
-                                <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                    <UserCircle className="h-5 w-5 text-blue-600" />
+                                <div className="h-8 w-8 bg-secondary/15 rounded-full flex items-center justify-center">
+                                    <UserCircle className="h-5 w-5 text-secondary" />
                                 </div>
                             </div>
                         </div>

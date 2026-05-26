@@ -40,25 +40,48 @@ const transporter = nodemailer.createTransport({
 
 export const checkInactivity = async (req: Request, res: Response) => {
     try {
-        if (!isEmailConfigured) {
-            const message = 'Email service not configured. Skipping inactivity notifications.';
-            console.log(message);
-            if (res) return res.status(503).json({ warning: message });
-            return;
-        }
-
         const response = await users.list();
-        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
-        const inactiveUsers = response.users.filter(user => {
-            const lastActive = user.registration ? new Date(user.registration) : null;
-            return lastActive && lastActive < fortyEightHoursAgo;
-        });
+        const inactiveUsers: any[] = [];
+        for (const user of response.users) {
+            try {
+                const recentActivity = await databases.listDocuments(
+                    DATABASE_ID,
+                    COLLECTIONS.ACTIVITY,
+                    [
+                        Query.equal('user_id', user.$id),
+                        Query.greaterThan('timestamp', fortyEightHoursAgo),
+                        Query.limit(1)
+                    ]
+                );
+
+                if (recentActivity.total === 0) {
+                    inactiveUsers.push(user);
+                }
+            } catch (activityError: any) {
+                console.warn(`Could not inspect recent activity for ${user.email}:`, activityError.message);
+            }
+        }
 
         console.log(`Found ${inactiveUsers.length} inactive users for notification`);
 
         let successCount = 0;
         let failCount = 0;
+
+        if (!isEmailConfigured) {
+            const message = 'Email service not configured. Inactivity reminder preview generated, but no email was sent.';
+            console.log(message);
+            if (res) {
+                return res.status(200).json({
+                    warning: message,
+                    inactiveUsers: inactiveUsers.length,
+                    successCount: 0,
+                    failCount: 0
+                });
+            }
+            return;
+        }
 
         for (const user of inactiveUsers) {
             try {
@@ -81,7 +104,8 @@ export const checkInactivity = async (req: Request, res: Response) => {
             res.status(200).json({ 
                 message: `Reminders sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`,
                 successCount,
-                failCount
+                failCount,
+                inactiveUsers: inactiveUsers.length
             });
         }
     } catch (error: any) {

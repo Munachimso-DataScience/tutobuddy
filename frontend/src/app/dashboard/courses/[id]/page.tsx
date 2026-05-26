@@ -737,12 +737,12 @@ export default function CourseDetailsPage() {
                             className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[85vh]"
                         >
                             {/* Modal Header */}
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-950/10 dark:to-blue-950/10">
-                                <div className="flex items-center space-x-3">
-                                    <div className="h-10 w-10 bg-purple-100 dark:bg-purple-950/30 rounded-xl flex items-center justify-center text-purple-600">
+                            <div className="relative p-6 border-b border-gray-100 dark:border-gray-800 flex flex-col gap-4 pr-16 sm:pr-6 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-950/10 dark:to-blue-950/10">
+                                <div className="flex items-center space-x-3 min-w-0">
+                                    <div className="h-10 w-10 bg-purple-100 dark:bg-purple-950/30 rounded-xl flex items-center justify-center text-purple-600 shrink-0">
                                         <Sparkles className="h-5 w-5" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest block">AI-GENERATED SUMMARY</span>
                                         <h3 className="text-md font-bold text-gray-900 dark:text-white truncate max-w-sm">{summaryTitle}</h3>
                                     </div>
@@ -751,7 +751,7 @@ export default function CourseDetailsPage() {
                                     onClick={() => setSummaryActive(false)}
                                     aria-label="Close modal"
                                     title="Close modal"
-                                    className="h-8 w-8 bg-gray-50 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full flex items-center justify-center transition-all"
+                                    className="absolute right-4 top-4 sm:static h-8 w-8 bg-gray-50 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full flex items-center justify-center transition-all shrink-0"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>

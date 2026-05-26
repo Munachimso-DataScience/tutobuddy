@@ -3,30 +3,40 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { account } from '@/lib/appwrite';
+import { getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import { Target, TrendingDown } from 'lucide-react';
 
+type AnalyticsAnalysis = {
+    weaknesses?: string[];
+    recommendations?: string | string[];
+};
+
 export default function AnalyticsDashboard() {
-    const [analysis, setAnalysis] = useState<any>(null);
+    const [analysis, setAnalysis] = useState<AnalyticsAnalysis | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchAnalysis = async () => {
             try {
-                const { jwt } = await account.createJWT();
+                const jwt = await getCachedJWT();
                 const res = await axios.get(`${API_URL}/api/analytics/weaknesses`, {
                     headers: { Authorization: `Bearer ${jwt}` }
                 });
                 setAnalysis(res.data);
-            } catch (error) {
-                console.error('Failed to fetch analytics');
+            } catch {
+                setError('Analytics are not available right now.');
             } finally {
                 setLoading(false);
             }
         };
         fetchAnalysis();
     }, []);
+
+    const recommendationText = Array.isArray(analysis?.recommendations)
+        ? analysis?.recommendations.join(' ')
+        : analysis?.recommendations;
 
     if (loading) return null;
 
@@ -45,7 +55,9 @@ export default function AnalyticsDashboard() {
                 </div>
                 
                 <div className="space-y-4">
-                    {analysis?.weaknesses?.length > 0 ? (
+                    {error ? (
+                        <p className="text-gray-500 text-sm font-medium">{error}</p>
+                    ) : analysis?.weaknesses?.length > 0 ? (
                         analysis.weaknesses.map((w: string, i: number) => (
                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
                                 <span className="font-semibold capitalize text-gray-700 dark:text-gray-300">{w}</span>
@@ -73,7 +85,7 @@ export default function AnalyticsDashboard() {
                 
                 <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30">
                     <p className="text-blue-800 dark:text-blue-400 text-sm font-medium leading-relaxed">
-                        {analysis?.recommendations || "Complete more quizzes to receive personalized AI study recommendations."}
+                        {recommendationText || "Complete more quizzes to receive personalized AI study recommendations."}
                     </p>
                 </div>
             </motion.div>

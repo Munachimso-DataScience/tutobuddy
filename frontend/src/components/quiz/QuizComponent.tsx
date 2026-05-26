@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X, Upload, Image, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ChevronRight, AlertCircle, HelpCircle, ExternalLink, Lightbulb, Loader2, X, Upload, RefreshCw } from 'lucide-react';
 import axios from 'axios';
-import { account, getCachedJWT } from '@/lib/appwrite';
+import { getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 
 interface Question {
@@ -35,11 +35,63 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
     const [essayResult, setEssayResult] = useState<any>(null);
     const [showHint, setShowHint] = useState(false);
     const [hintData, setHintData] = useState<any>(null);
+    const [materialText, setMaterialText] = useState('');
     
     // Handwritten OCR States
     const [essayMode, setEssayMode] = useState<'type' | 'handwritten'>('type');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadMaterialText = async () => {
+            if (!materialId) {
+                setMaterialText('');
+                return;
+            }
+
+            try {
+                const jwt = await getCachedJWT();
+                const res = await axios.get(`${API_URL}/api/materials/${materialId}/text`, {
+                    headers: { Authorization: `Bearer ${jwt}` }
+                });
+                if (isMounted) {
+                    setMaterialText(res.data.text || '');
+                }
+            } catch (error) {
+                console.error('Failed to load course material text for explanations:', error);
+                if (isMounted) {
+                    setMaterialText('');
+                }
+            }
+        };
+
+        loadMaterialText();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [materialId]);
+
+    const ensureMaterialText = async () => {
+        if (materialText || !materialId) {
+            return materialText;
+        }
+
+        try {
+            const jwt = await getCachedJWT();
+            const res = await axios.get(`${API_URL}/api/materials/${materialId}/text`, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            const text = res.data.text || '';
+            setMaterialText(text);
+            return text;
+        } catch (error) {
+            console.error('Failed to fetch material text on demand:', error);
+            return '';
+        }
+    };
 
     const logQuizActivity = async (isCorrect: boolean, userAnswer: string) => {
         try {
@@ -73,11 +125,13 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
             setLoadingAI(true);
             try {
                 const jwt = await getCachedJWT();
+                const resolvedMaterialText = await ensureMaterialText();
                 const res = await axios.post(`${API_URL}/api/feedback/explain`, {
                     question: currentQuestion.question,
                     userAnswer: answer,
                     correctAnswer: currentQuestion.answer,
-                    context: currentQuestion.explanation // Use static explanation as context for AI
+                    context: currentQuestion.explanation || currentQuestion.question,
+                    materialText: resolvedMaterialText
                 }, {
                     headers: { Authorization: `Bearer ${jwt}` }
                 });
@@ -479,14 +533,60 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                                         <div className="bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-blue-200/50 dark:border-blue-900/30">
                                             <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Transcribed Handwriting</span>
                                             <p className="text-xs text-blue-900/80 dark:text-blue-200/80 font-mono italic leading-relaxed">
-                                                "{essayResult.extracted_text}"
+                                                &quot;{essayResult.extracted_text}&quot;
                                             </p>
                                         </div>
                                     )}
 
-                                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-4 rounded-xl">
-                                        {aiFeedback || currentQuestion.explanation || currentQuestion.rubric}
-                                    </p>
+                                    <div className="space-y-4">
+                                        <div className="text-sm text-blue-700 dark:text-blue-300 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-4 rounded-xl whitespace-pre-line">
+                                            <p>{aiFeedback || currentQuestion.explanation || currentQuestion.rubric}</p>
+                                        </div>
+
+                                        {explanationData?.why_wrong && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Why this answer is wrong</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">{explanationData.why_wrong}</p>
+                                            </div>
+                                        )}
+
+                                        {explanationData?.real_meaning && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Real meaning in context</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">{explanationData.real_meaning}</p>
+                                            </div>
+                                        )}
+
+                                        {explanationData?.concept_breakdown && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Concept breakdown</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">{explanationData.concept_breakdown}</p>
+                                            </div>
+                                        )}
+
+                                        {explanationData?.memory_tip && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Memory tip</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">{explanationData.memory_tip}</p>
+                                            </div>
+                                        )}
+
+                                        {explanationData?.suggestions && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">What to study next</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">{explanationData.suggestions}</p>
+                                            </div>
+                                        )}
+
+                                        {explanationData?.source_excerpt && (
+                                            <div className="p-3 rounded-xl bg-white/70 dark:bg-black/20 border border-blue-100 dark:border-blue-900/30">
+                                                <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-wider block mb-1">Course excerpt used</span>
+                                                <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed whitespace-pre-line">
+                                                    {explanationData.source_excerpt}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {explanationData?.links && (
                                         <div className="pt-2">
@@ -503,6 +603,21 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                                                         <ExternalLink className="h-3 w-3" />
                                                         <span>{link.title}</span>
                                                     </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {explanationData?.search_terms?.length > 0 && (
+                                        <div className="pt-2">
+                                            <span className="text-xs font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-tighter block mb-2">Search terms used by AI</span>
+                                            <div className="flex flex-wrap gap-2">
+                                                {explanationData.search_terms.map((term: string, idx: number) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40"
+                                                    >
+                                                        {term}
+                                                    </span>
                                                 ))}
                                             </div>
                                         </div>

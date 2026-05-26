@@ -8,13 +8,14 @@ const getAiUrl = () => {
 export const getExplanation = async (req: any, res: any) => {
     const AI_URL = getAiUrl();
     try {
-        const { question, userAnswer, correctAnswer, context } = req.body;
+        const { question, userAnswer, correctAnswer, context, materialText } = req.body;
         
         const response = await axios.post(`${AI_URL}/explain-incorrect`, {
             question,
             user_answer: userAnswer,
             correct_answer: correctAnswer,
-            context
+            context,
+            material_text: materialText
         });
 
         res.status(200).json(response.data);

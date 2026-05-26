@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { account, getCachedJWT } from '@/lib/appwrite';
+import { getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import {
@@ -22,13 +22,13 @@ import StudyActivityChart from '@/components/dashboard/StudyActivityChart';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
-    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+    <div className="bg-surface/90 dark:bg-surface-2/90 p-6 rounded-2xl shadow-sm border border-primary/10 dark:border-primary/20">
         <div className="flex items-start justify-between">
             <div className={`p-3 rounded-xl ${color}`}>
                 <Icon className="h-6 w-6 text-white" />
             </div>
             {trend && (
-                <div className="flex items-center text-green-600 text-xs font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-lg">
+            <div className="flex items-center text-secondary text-xs font-bold bg-secondary/10 px-2 py-1 rounded-lg">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     {trend}
                 </div>
@@ -81,7 +81,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
-                <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+                <Loader2 className="h-10 w-10 text-secondary animate-spin" />
             </div>
         );
     }
@@ -90,10 +90,10 @@ export default function DashboardPage() {
         <div className="space-y-8 pb-10">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground dark:text-cream">
                         Welcome, {user?.name?.split(' ')[0] || 'Scholar'}! 👋
                     </h1>
-                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                    <p className="text-sm md:text-base text-foreground/60 dark:text-cream/60 mt-1 font-medium">
                         {stats?.streak > 0 
                             ? `On a ${stats.streak}-day study streak!`
                             : "Start your study journey today!"}
@@ -101,12 +101,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center space-x-2 md:space-x-4">
                     <Link href="/dashboard/reports" className="flex-1 sm:flex-none">
-                        <button className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
+                        <button className="w-full bg-surface/90 dark:bg-surface-2/90 border border-primary/10 dark:border-primary/20 text-foreground px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-surface-2 transition-all">
                             Reports
                         </button>
                     </Link>
                     <Link href="/dashboard/courses" className="flex-1 sm:flex-none">
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105">
+                        <button className="w-full bg-secondary hover:bg-accent text-white px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center shadow-lg shadow-secondary/20 transition-all hover:scale-105">
                             Study
                             <ArrowUpRight className="ml-2 h-4 w-4" />
                         </button>
@@ -119,31 +119,31 @@ export default function DashboardPage() {
                     icon={BookOpen}
                     label="Active Courses"
                     value={courseCount.toString()}
-                    color="bg-blue-600"
+                color="bg-primary"
                 />
                 <StatCard
                     icon={Trophy}
                     label="Streak"
                     value={`${stats?.streak || 0} Days`}
                     trend={stats?.streak > 0 ? "+1" : undefined}
-                    color="bg-orange-500"
+                color="bg-secondary"
                 />
                 <StatCard
                     icon={Clock}
                     label="Study Time"
                     value={stats?.studyTime || "0m"}
                     trend="+5m"
-                    color="bg-purple-600"
+                color="bg-accent"
                 />
                 <StatCard
                     icon={TrendingUp}
                     label="Avg Score"
                     value={stats?.avgScore || "0%"}
-                    color="bg-emerald-500"
+                color="bg-denim"
                 />
                 {/* New Leaderboard Glance Card */}
                 <Link href="/dashboard/leaderboard" className="col-span-2 lg:col-span-1">
-                    <div className="bg-linear-to-br from-yellow-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-500/20 text-white h-full hover:scale-105 transition-all group">
+                    <div className="bg-linear-to-br from-secondary to-accent p-6 rounded-2xl shadow-lg shadow-secondary/20 text-white h-full hover:scale-105 transition-all group">
                         <div className="flex items-center justify-between mb-2">
                             <Crown className="group-hover:rotate-12 transition-transform" size={24} />
                             <ArrowUpRight size={16} />
@@ -155,32 +155,32 @@ export default function DashboardPage() {
             </div>
 
             {/* Daily Quests Section */}
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Daily Quests</h3>
-                        <p className="text-sm text-gray-500 font-medium">Complete these to level up your exam readiness</p>
+                        <h3 className="text-xl font-black text-foreground dark:text-cream uppercase tracking-tighter">Daily Quests</h3>
+                        <p className="text-sm text-foreground/60 font-medium">Complete these to level up your exam readiness</p>
                     </div>
-                    <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest">
+                    <div className="px-4 py-2 bg-secondary/10 rounded-xl text-secondary text-xs font-black uppercase tracking-widest">
                         0/3 Complete
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { title: "Quiz Master", desc: "Complete any 10-question quiz", xp: "+50 XP", done: false, color: "bg-blue-500" },
-                        { title: "The Scholar", desc: "Upload and read 1 new document", xp: "+30 XP", done: false, color: "bg-purple-500" },
-                        { title: "Essay Writer", desc: "Submit 1 high-quality essay", xp: "+100 XP", done: false, color: "bg-emerald-500" }
+                        { title: "Quiz Master", desc: "Complete any 10-question quiz", xp: "+50 XP", done: false, color: "bg-primary" },
+                        { title: "The Scholar", desc: "Upload and read 1 new document", xp: "+30 XP", done: false, color: "bg-accent" },
+                        { title: "Essay Writer", desc: "Submit 1 high-quality essay", xp: "+100 XP", done: false, color: "bg-denim" }
                     ].map((quest, i) => (
-                        <div key={i} className="flex items-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl group cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-700">
-                            <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-blue-500/10`}>
+                        <div key={i} className="flex items-center p-4 bg-background/70 dark:bg-background/15 rounded-2xl group cursor-pointer hover:bg-surface/90 dark:hover:bg-surface-2/40 transition-all border border-transparent hover:border-primary/10 dark:hover:border-primary/20">
+                            <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-secondary/10`}>
                                 <CheckCircle2 size={20} className={quest.done ? "text-white" : "text-white/30"} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-bold text-gray-900 dark:text-white text-sm">{quest.title}</h4>
-                                <p className="text-xs text-gray-500">{quest.desc}</p>
+                                <h4 className="font-bold text-foreground dark:text-cream text-sm">{quest.title}</h4>
+                                <p className="text-xs text-foreground/55">{quest.desc}</p>
                             </div>
-                            <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest pl-2">
+                            <div className="text-[10px] font-black text-secondary uppercase tracking-widest pl-2">
                                 {quest.xp}
                             </div>
                         </div>
@@ -190,13 +190,13 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Activity Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+                <div className="lg:col-span-2 bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Study Activity</h3>
-                            <p className="text-sm text-gray-500 font-medium">Weekly hours spent learning</p>
+                            <h3 className="text-xl font-bold text-foreground dark:text-cream">Study Activity</h3>
+                            <p className="text-sm text-foreground/60 font-medium">Weekly hours spent learning</p>
                         </div>
-                        <select className="bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-xs font-bold px-3 py-2 focus:ring-2 focus:ring-blue-500" title="Select Study Activity Time Range" aria-label="Select Study Activity Time Range">
+                        <select className="bg-background/70 dark:bg-background/20 border-none rounded-lg text-xs font-bold px-3 py-2 focus:ring-2 focus:ring-secondary" title="Select Study Activity Time Range" aria-label="Select Study Activity Time Range">
                             <option>Last 7 Days</option>
                             <option>Last 30 Days</option>
                         </select>
@@ -206,27 +206,27 @@ export default function DashboardPage() {
 
                 {/* Readiness & Goals */}
                 <div className="space-y-8">
-                    <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col items-center">
+                    <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20 flex flex-col items-center">
                         <ReadinessChart percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
                         <div className="mt-4 text-center">
                             <p className="text-sm text-gray-500 font-medium px-4">
                                 {courses.length > 0 ? (
-                                    <span>Based on your activity across <span className="text-blue-600 font-bold">{courses.length} courses</span>.</span>
+                                    <span>Based on your activity across <span className="text-secondary font-bold">{courses.length} courses</span>.</span>
                                 ) : (
-                                    <span>Complete your first quiz to see your <span className="text-blue-600 font-bold">Exam Readiness</span>.</span>
+                                    <span>Complete your first quiz to see your <span className="text-secondary font-bold">Exam Readiness</span>.</span>
                                 )}
                             </p>
                         </div>
                     </div>
 
-                    <div className="bg-linear-to-br from-indigo-600 to-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="bg-linear-to-br from-primary to-secondary rounded-3xl p-8 text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
                         <div className="relative z-10">
                             <h3 className="text-lg font-bold mb-1">Pro Tip</h3>
-                            <p className="text-blue-100 text-sm font-medium leading-relaxed">
+                            <p className="text-cream/90 text-sm font-medium leading-relaxed">
                                 Students who study at least 30 minutes a day are 4x more likely to pass their finals.
                             </p>
                             <Link href="/dashboard/success-tips" className="mt-6 inline-block">
-                                <button className="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors shadow-lg">
+                                    <button className="bg-white text-secondary px-4 py-2 rounded-xl text-xs font-bold hover:bg-cream transition-colors shadow-lg">
                                     Learn More
                                 </button>
                             </Link>
@@ -241,9 +241,9 @@ export default function DashboardPage() {
             <AnalyticsDashboard />
 
             {/* Courses Progress section */}
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800 mt-8">
+            <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20 mt-8">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Courses & Exam Readiness</h3>
+                    <h3 className="text-xl font-bold text-foreground dark:text-cream">Courses & Exam Readiness</h3>
                 </div>
                 <div className="space-y-6">
                     {courses.map((course: any, idx: number) => {
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                                 <div>
                                     <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.title} ({course.code})</h4>
                                     {daysToExam !== null && daysToExam > 0 ? (
-                                        <p className="text-xs font-semibold text-orange-500 mt-1">{daysToExam} days until final exam ({new Date(course.exam_date).toLocaleDateString()})</p>
+                                        <p className="text-xs font-semibold text-secondary mt-1">{daysToExam} days until final exam ({new Date(course.exam_date).toLocaleDateString()})</p>
                                     ) : daysToExam !== null && daysToExam <= 0 ? (
                                         <p className="text-xs font-semibold text-red-500 mt-1">Exam Date Passed</p>
                                     ) : (
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">Readiness: {course.exam_readiness || 0}%</span>
+                                    <span className="text-sm font-bold text-secondary dark:text-secondary">Readiness: {course.exam_readiness || 0}%</span>
                                 </div>
                             </div>
                             
@@ -277,7 +277,7 @@ export default function DashboardPage() {
                                         <span>{course.progress || 0}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                                        <div className={`bg-emerald-500 h-2.5 rounded-full progress-bar-prog-${idx}`}></div>
+                                        <div className={`bg-primary h-2.5 rounded-full progress-bar-prog-${idx}`}></div>
                                     </div>
                                 </div>
                                 <div>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                                         <span>{course.exam_readiness || 0}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                                        <div className={`bg-blue-600 h-2.5 rounded-full progress-bar-read-${idx}`}></div>
+                                        <div className={`bg-secondary h-2.5 rounded-full progress-bar-read-${idx}`}></div>
                                     </div>
                                 </div>
                             </div>

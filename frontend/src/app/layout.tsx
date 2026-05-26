@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -35,9 +36,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${robotoMono.variable} antialiased`}
+        className={`${inter.variable} ${robotoMono.variable} antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
+        <Script id="theme-init" strategy="beforeInteractive">{`
+          (function() {
+            try {
+              var storageKey = 'tutobuddy-theme';
+              var theme = localStorage.getItem(storageKey) || 'dark';
+              var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var resolved = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
+              document.documentElement.classList.toggle('dark', resolved === 'dark');
+              document.documentElement.style.colorScheme = resolved;
+              if (!localStorage.getItem(storageKey)) {
+                localStorage.setItem(storageKey, 'dark');
+              }
+            } catch (error) {}
+          })();
+        `}</Script>
         <AuthProvider>
           {children}
           <ToastContainer position="bottom-right" />
