@@ -12,7 +12,7 @@ import { generateQuiz, getQuizzes } from './controllers/quizController';
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
 import { evaluateOcr } from './controllers/ocrController';
 import { getExplanation, getHint } from './controllers/feedbackController';
-import { checkInactivity, generateWeeklyReports } from './controllers/notificationController';
+import { checkInactivity, generateWeeklyReports, getSmtpStatus, sendTestEmail } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
 import { getLeaderboard } from './controllers/leaderboardController';
 import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
@@ -89,6 +89,8 @@ app.post('/api/feedback/explain', authMiddleware, getExplanation);
 app.post('/api/feedback/hint', authMiddleware, getHint);
 
 // Notification Routes
+app.get('/api/notifications/smtp-status', getSmtpStatus);
+app.post('/api/notifications/test-email', authMiddleware, sendTestEmail);
 app.post('/api/notifications/check-inactivity', authMiddleware, checkInactivity);
 app.post('/api/notifications/weekly-report', authMiddleware, generateWeeklyReports);
 

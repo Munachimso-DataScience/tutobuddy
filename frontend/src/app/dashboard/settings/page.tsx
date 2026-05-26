@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_URL } from '@/lib/api';
+import { getCachedJWT } from '@/lib/appwrite';
 import {
     User,
     Mail,
@@ -99,6 +102,8 @@ const ToggleRow = ({
 export default function SettingsPage() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [smtpLoading, setSmtpLoading] = useState(false);
+    const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; ready?: boolean; host?: string; fromEmail?: string } | null>(null);
     const [theme, setTheme] = useState<ThemeMode>('dark');
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [studyReminders, setStudyReminders] = useState(true);
@@ -132,6 +137,19 @@ export default function SettingsPage() {
         } catch {
             // ignore invalid saved preferences
         }
+    }, []);
+
+    useEffect(() => {
+        const fetchSmtpStatus = async () => {
+            try {
+                const res = await axios.get(`${API_URL}/api/notifications/smtp-status`);
+                setSmtpStatus(res.data);
+            } catch {
+                setSmtpStatus({ configured: false, ready: false });
+            }
+        };
+
+        fetchSmtpStatus();
     }, []);
 
     useEffect(() => {
@@ -181,6 +199,24 @@ export default function SettingsPage() {
             setLoading(false);
             toast.success('Settings saved successfully!');
         }, 700);
+    };
+
+    const handleTestEmail = async () => {
+        setSmtpLoading(true);
+        try {
+            const jwt = await getCachedJWT();
+            const res = await axios.post(`${API_URL}/api/notifications/test-email`, {}, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            toast.success(res.data?.message || 'Test email sent successfully!');
+        } catch (error: unknown) {
+            const message = axios.isAxiosError(error)
+                ? error.response?.data?.error || 'Failed to send test email.'
+                : 'Failed to send test email.';
+            toast.error(message);
+        } finally {
+            setSmtpLoading(false);
+        }
     };
 
     return (
@@ -325,6 +361,31 @@ export default function SettingsPage() {
                         >
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Save Settings
+                        </button>
+                    </div>
+
+                    <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <p className="text-sm font-bold text-foreground dark:text-cream">Brevo SMTP Status</p>
+                                <p className="text-xs text-foreground/55 dark:text-cream/55">Check whether your SMTP settings are ready.</p>
+                            </div>
+                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${smtpStatus?.configured ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
+                                {smtpStatus?.configured ? 'Connected' : 'Not Configured'}
+                            </span>
+                        </div>
+                        <div className="space-y-2 text-xs text-foreground/60 dark:text-cream/60">
+                            <p>Host: {smtpStatus?.host || 'smtp-relay.brevo.com'}</p>
+                            <p>Sender: {smtpStatus?.fromEmail || 'Not set yet'}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleTestEmail}
+                            disabled={smtpLoading || !smtpStatus?.configured}
+                            className="mt-4 flex w-full items-center justify-center rounded-2xl border border-primary/10 bg-background/70 px-4 py-3 text-sm font-bold text-foreground transition-all hover:border-secondary/30 hover:bg-surface/90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-background/20 dark:text-cream"
+                        >
+                            {smtpLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4 text-secondary" />}
+                            Send Test Email
                         </button>
                     </div>
 

@@ -66,10 +66,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, []);
 
     const activeNotifications = [
-        notificationSummary.emailAlerts && 'Email alerts enabled',
-        notificationSummary.studyReminders && 'Study reminders enabled',
-        notificationSummary.weeklySummary && 'Weekly summaries enabled'
-    ].filter(Boolean) as string[];
+        notificationSummary.emailAlerts && { label: 'Email alerts enabled', href: '/dashboard/settings' },
+        notificationSummary.studyReminders && { label: 'Study reminders enabled', href: '/dashboard/courses' },
+        notificationSummary.weeklySummary && { label: 'Weekly summaries enabled', href: '/dashboard/reports' }
+    ].filter(Boolean) as { label: string; href: string }[];
 
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -205,9 +205,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <div className="space-y-2">
                                         {activeNotifications.length > 0 ? (
                                             activeNotifications.map((item) => (
-                                                <div key={item} className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground dark:text-cream">
-                                                    {item}
-                                                </div>
+                                                <Link
+                                                    key={item.label}
+                                                    href={item.href}
+                                                    onClick={() => setShowNotifications(false)}
+                                                    className="block rounded-2xl border border-primary/10 bg-background/70 px-3 py-2 text-sm text-foreground transition-all hover:border-secondary/30 hover:bg-surface/90 dark:bg-background/20 dark:text-cream dark:hover:bg-surface-2/60"
+                                                >
+                                                    {item.label}
+                                                </Link>
                                             ))
                                         ) : (
                                             <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
