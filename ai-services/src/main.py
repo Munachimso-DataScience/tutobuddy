@@ -543,6 +543,9 @@ async def generate_quiz(data: dict):
         num_requested = data.get("num_questions", 35) # Default total 35
         num_mcq = data.get("num_mcq", 30)
         num_essay = data.get("num_essay", 5)
+        difficulty = str(data.get("difficulty", "medium")).lower()
+        performance_score = data.get("performance_score")
+        adaptive_guidance = data.get("adaptive_guidance", "")
         
         print(f"--- Quiz Generation Request Received ---")
         print(f"Text length: {len(text)} characters. Targets: {num_mcq} MCQ, {num_essay} Essay")
@@ -555,6 +558,17 @@ async def generate_quiz(data: dict):
             print(f"Truncating text from {len(text)} to 30,000 chars for performance.")
             text = text[:30000]
 
+        difficulty_guidance = {
+            "easy": "revision mode: create simpler questions, clearer wording, more direct recall, and foundational reinforcement.",
+            "medium": "balanced mode: mix recall with moderate conceptual reasoning.",
+            "hard": "challenge mode: create deeper analytical, scenario-based, and application-heavy questions with subtle distractors."
+        }
+        selected_guidance = difficulty_guidance.get(difficulty, difficulty_guidance["medium"])
+        if adaptive_guidance:
+            selected_guidance = f"{selected_guidance} Additional guidance: {adaptive_guidance}"
+
+        performance_note = f"The learner's recent performance score is {performance_score}%. " if performance_score is not None else "No recent performance score is available. "
+
         # --- Premium Google Gemini Path ---
         if gemini_available:
             print("Running Premium Gemini Quiz Generator...")
@@ -563,10 +577,17 @@ async def generate_quiz(data: dict):
                 prompt = f"""
                 Generate a study quiz based on the text below. 
                 The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
+                Adaptive difficulty mode: {difficulty.upper()}.
+                {performance_note}
+                Use this teaching style: {selected_guidance}
                 
                 For MCQs:
                 - The questions must be deep, conceptual, and check real-world logic or application.
                 - Avoid simple blank fill-ins or direct word matching.
+                - Match the question style to the adaptive mode above.
+                - If difficulty is EASY, use more direct revision prompts and simpler distractors.
+                - If difficulty is MEDIUM, balance recall with some reasoning.
+                - If difficulty is HARD, ask more demanding, inferential, and application-based questions.
                 - Each MCQ must have exactly 4 options.
                 - The "options" list must contain the plain texts.
                 - The "formatted_options" list must be prefixed with "A. ", "B. ", "C. ", "D. ".
@@ -577,6 +598,7 @@ async def generate_quiz(data: dict):
                 
                 For Essays:
                 - The questions must ask the student to explain core concepts, relationships between mechanisms, or summary of main themes in the text.
+                - Match the difficulty mode: EASY should be revision-focused and guided, HARD should be analytical and evaluative.
                 - "context" must be a supporting reference sentence from the text.
                 - "answer" must be a comprehensive reference master answer.
                 - "explanation" must be educational criteria for a correct response.
@@ -1692,6 +1714,92 @@ Return valid JSON only with this schema:
         }
     except Exception as e:
         print(f"Explanation Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/adaptive-feedback")
+async def adaptive_feedback(data: dict):
+    try:
+        score = int(data.get("score", 0) or 0)
+        difficulty = str(data.get("difficulty", "medium")).lower()
+        performance_score = data.get("performance_score")
+        course_title = data.get("course_title", "") or "this course"
+        quiz_title = data.get("quiz_title", "") or "this quiz"
+
+        if score >= 75:
+            level = "hard"
+            headline = "You’ve earned a harder challenge"
+            why = f"Your score of {score}% shows strong control of the material, so the next quiz will move into harder reasoning and application."
+            next_focus = "Expect deeper concept checks, trickier distractors, and scenario-based questions."
+            encouragement = "Keep pushing — you’re ready for more demanding questions."
+        elif score < 50:
+            level = "easy"
+            headline = "Time for a revision-focused quiz"
+            why = f"Your score of {score}% suggests this topic still needs reinforcement, so the next quiz will focus on simpler revision and core recall."
+            next_focus = "Expect clearer wording, more direct prompts, and questions that revisit the basics."
+            encouragement = "This is how progress works — tighten the basics first, then level up."
+        else:
+            level = "medium"
+            headline = "Your next quiz will stay balanced"
+            why = f"Your score of {score}% shows you’re in the middle zone, so the next quiz will keep a balanced mix of recall and understanding."
+            next_focus = "Expect a mix of straightforward questions and some concept application."
+            encouragement = "You’re progressing steadily — keep building consistency."
+
+        base_payload = {
+            "level": level,
+            "headline": headline,
+            "message": why,
+            "why_this_level": why,
+            "next_focus": next_focus,
+            "encouragement": encouragement,
+            "course_title": course_title,
+            "quiz_title": quiz_title,
+            "score": score,
+            "performance_score": performance_score,
+            "difficulty": difficulty
+        }
+
+        if gemini_available:
+            try:
+                model = get_gemini_model("gemini-2.5-flash")
+                prompt = f"""
+You are a warm academic tutor explaining why the student's next quiz level changed.
+
+Student score: {score}%
+Current adaptive level: {difficulty}
+Recent performance score: {performance_score}
+Course title: {course_title}
+Quiz title: {quiz_title}
+
+Write a short, encouraging explanation that tells the student:
+1. why this level was chosen,
+2. what kind of questions they should expect next,
+3. how this helps their learning.
+
+Use a professional but supportive tone. Avoid vague filler.
+
+Return valid JSON only with this schema:
+{{
+  "level": "easy | medium | hard",
+  "headline": "short headline",
+  "message": "main explanation in 2-4 short sentences",
+  "why_this_level": "why the level was chosen",
+  "next_focus": "what the student should expect next",
+  "encouragement": "short encouraging line"
+}}
+"""
+                response = model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                payload = json.loads(strip_json_markdown(response.text))
+                payload = {**base_payload, **payload}
+                return payload
+            except Exception as gemini_err:
+                print(f"Adaptive feedback Gemini generation failed: {gemini_err}. Falling back to deterministic message.")
+
+        return base_payload
+    except Exception as e:
+        print(f"Adaptive feedback error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-weakness")

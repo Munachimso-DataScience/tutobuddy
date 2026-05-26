@@ -8,7 +8,7 @@ import { authMiddleware } from './middleware/auth';
 import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
 import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
-import { generateQuiz, getQuizzes } from './controllers/quizController';
+import { generateQuiz, getQuizzes, updateQuizScore } from './controllers/quizController';
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
 import { evaluateOcr } from './controllers/ocrController';
 import { getExplanation, getHint } from './controllers/feedbackController';
@@ -80,6 +80,7 @@ app.post('/api/quizzes/generate', authMiddleware, generateQuiz);
 app.post('/api/quizzes/evaluate-essay', authMiddleware, evaluateEssay);
 app.post('/api/quizzes/evaluate-handwritten', authMiddleware, upload.single('file'), evaluateHandwrittenAnswer);
 app.get('/api/quizzes/:materialId', authMiddleware, getQuizzes);
+app.patch('/api/quizzes/:id/score', authMiddleware, updateQuizScore);
 
 // OCR Routes
 app.post('/api/ocr/evaluate', upload.single('file'), evaluateOcr);

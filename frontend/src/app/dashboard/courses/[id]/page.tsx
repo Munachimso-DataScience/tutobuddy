@@ -78,6 +78,7 @@ export default function CourseDetailsPage() {
     const [isQuizOpen, setIsQuizOpen] = useState(false);
     const [currentQuiz, setCurrentQuiz] = useState<any>(null);
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
+    const [adaptiveFeedback, setAdaptiveFeedback] = useState<any>(null);
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
     const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [pastedContent, setPastedContent] = useState('');
@@ -315,15 +316,33 @@ export default function CourseDetailsPage() {
         setGeneratingQuiz(true);
         try {
             const jwt = await getCachedJWT();
+            const storedPerformanceRaw = typeof window !== 'undefined' ? localStorage.getItem(`tutorbuddy-quiz-performance:${materialId}`) : null;
+            let adaptiveScore: number | null = null;
+            if (storedPerformanceRaw) {
+                try {
+                    const parsed = JSON.parse(storedPerformanceRaw);
+                    if (typeof parsed?.score === 'number') {
+                        adaptiveScore = parsed.score;
+                    }
+                } catch {
+                    adaptiveScore = null;
+                }
+            }
+
             const response = await axios.post(`${API_URL}/api/quizzes/generate`, {
-                materialId
+                materialId,
+                adaptiveScore
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             
             const quizContent = JSON.parse(response.data.content);
-            setCurrentQuiz(quizContent);
+            setCurrentQuiz({
+                ...quizContent,
+                quizId: response.data.$id
+            });
             setCurrentMaterialId(materialId);
+            setAdaptiveFeedback(null);
             setIsQuizOpen(true);
             toast.success('AI Quiz prepared successfully!');
         } catch (error: any) {
@@ -405,8 +424,22 @@ export default function CourseDetailsPage() {
                     <QuizComponent 
                         questions={currentQuiz.questions} 
                         materialId={currentMaterialId || undefined}
-                        onComplete={(score) => {
+                        adaptiveFeedback={adaptiveFeedback}
+                        onComplete={async (score) => {
                             console.log('Quiz complete, score:', score);
+                            try {
+                                if (currentQuiz?.quizId) {
+                                    const jwt = await getCachedJWT();
+                                    const response = await axios.patch(`${API_URL}/api/quizzes/${currentQuiz.quizId}/score`, {
+                                        score
+                                    }, {
+                                        headers: { Authorization: `Bearer ${jwt}` }
+                                    });
+                                    setAdaptiveFeedback(response.data?.adaptiveFeedback || null);
+                                }
+                            } catch (error) {
+                                console.error('Failed to save quiz score for adaptive learning:', error);
+                            }
                         }} 
                     />
                 </div>

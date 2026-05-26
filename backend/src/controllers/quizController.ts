@@ -25,16 +25,75 @@ const getAiUrl = () => {
     return envUrl || 'http://localhost:8000';
 };
 
+type QuizDifficulty = 'easy' | 'medium' | 'hard';
+
+const getAdaptiveDifficulty = (performanceScore?: number | null): QuizDifficulty => {
+    if (typeof performanceScore !== 'number' || Number.isNaN(performanceScore)) {
+        return 'medium';
+    }
+    if (performanceScore >= 75) return 'hard';
+    if (performanceScore < 50) return 'easy';
+    return 'medium';
+};
+
+const buildAdaptiveQuizConfig = (difficulty: QuizDifficulty) => {
+    switch (difficulty) {
+        case 'hard':
+            return {
+                num_mcq: 18,
+                num_essay: 6,
+                style: 'challenge',
+                guidance: 'Ask more analytical, scenario-based, and application-heavy questions. Use subtle distractors and require deeper reasoning.'
+            };
+        case 'easy':
+            return {
+                num_mcq: 22,
+                num_essay: 2,
+                style: 'revision',
+                guidance: 'Ask simpler, revision-focused questions that reinforce the basics. Use clearer wording, direct clues, and less ambiguity.'
+            };
+        default:
+            return {
+                num_mcq: 20,
+                num_essay: 4,
+                style: 'balanced',
+                guidance: 'Ask a balanced mix of conceptual and recall questions.'
+            };
+    }
+};
+
 export const generateQuiz = async (req: any, res: any) => {
     const AI_URL = getAiUrl();
     try {
-        const { materialId } = req.body;
+        const { materialId, adaptiveScore } = req.body;
         const userId = req.user.$id;
 
         console.log(`Using Database: ${DATABASE_ID}, Quiz Collection: ${COLLECTIONS.QUIZZES}`);
         
         // 1. Get material file from database to get file_id and course_id
         const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, materialId);
+        const recentQuizzes = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.QUIZZES,
+            [
+                Query.equal('user_id', userId),
+                Query.equal('course_id', material.course_id),
+                Query.orderDesc('date_taken'),
+                Query.limit(5)
+            ]
+        ).catch(() => null);
+
+        const parsedAdaptiveScore = Number(adaptiveScore);
+        const adaptiveScoreFromClient = Number.isFinite(parsedAdaptiveScore) && parsedAdaptiveScore >= 0 ? parsedAdaptiveScore : null;
+        const scoredQuizzes = recentQuizzes?.documents?.filter((quiz: any) => Number(quiz.score) > 0) || [];
+        const averageRecentScore = adaptiveScoreFromClient !== null
+            ? Math.round(adaptiveScoreFromClient)
+            : scoredQuizzes.length > 0
+            ? Math.round(scoredQuizzes.reduce((sum: number, quiz: any) => sum + (Number(quiz.score) || 0), 0) / scoredQuizzes.length)
+            : null;
+        const adaptiveDifficulty = getAdaptiveDifficulty(averageRecentScore);
+        const adaptiveConfig = buildAdaptiveQuizConfig(adaptiveDifficulty);
+        console.log(`Adaptive quiz mode for user ${userId} on course ${material.course_id}: ${adaptiveDifficulty} (avg score: ${averageRecentScore ?? 'n/a'})`);
         
         // --- 1. AI Service Discovery & Warm-up ---
         let finalAiUrl = AI_URL;
@@ -119,14 +178,17 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error(`The study material is too short to generate a high-quality quiz (found ${text?.length || 0} characters). Please provide more content.`);
         }
 
-        console.log(`Requesting 30 MCQs and 5 Essays from AI for ${text.length} chars...`);
+        console.log(`Requesting adaptive quiz (${adaptiveConfig.num_mcq} MCQs, ${adaptiveConfig.num_essay} Essays) from AI for ${text.length} chars...`);
 
         // 5. Generate Quiz
         const quizRes = await axios.post(`${finalAiUrl}/generate-quiz`, {
             text: text,
-            num_mcq: 20, 
-            num_essay: 4, 
-            num_questions: 24
+            num_mcq: adaptiveConfig.num_mcq,
+            num_essay: adaptiveConfig.num_essay,
+            num_questions: adaptiveConfig.num_mcq + adaptiveConfig.num_essay,
+            difficulty: adaptiveDifficulty,
+            performance_score: averageRecentScore,
+            adaptive_guidance: adaptiveConfig.guidance
         }, { timeout: 300000 }); 
 
         const quizData = quizRes.data.quiz;
@@ -201,6 +263,95 @@ export const getQuizzes = async (req: any, res: any) => {
         res.status(200).json(response.documents);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+export const updateQuizScore = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.$id;
+        const { score } = req.body;
+
+        const numericScore = Math.max(0, Math.min(100, Number(score) || 0));
+
+        const quiz = await databases.getDocument(DATABASE_ID, COLLECTIONS.QUIZZES, id);
+        if (quiz.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const updatedQuiz = await databases.updateDocument(DATABASE_ID, COLLECTIONS.QUIZZES, id, {
+            score: numericScore,
+            completed_at: new Date().toISOString()
+        });
+
+        let courseTitle = quiz.title || 'this course';
+        if (quiz.course_id) {
+            try {
+                const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, quiz.course_id);
+                courseTitle = course.title || course.name || courseTitle;
+                const readinessBoost = numericScore >= 75 ? 10 : numericScore < 50 ? 3 : 6;
+                const progressBoost = numericScore >= 75 ? 5 : numericScore < 50 ? 2 : 3;
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.COURSES, quiz.course_id, {
+                    progress: Math.min((course.progress || 0) + progressBoost, 100),
+                    exam_readiness: Math.min((course.exam_readiness || 0) + readinessBoost, 100)
+                });
+            } catch (courseError: any) {
+                console.warn('Failed to update course readiness after quiz score save:', courseError.message);
+            }
+        }
+
+        let adaptiveFeedback: any = null;
+        try {
+            const aiUrl = getAiUrl();
+            const adaptiveResponse = await axios.post(`${aiUrl}/adaptive-feedback`, {
+                score: numericScore,
+                difficulty: getAdaptiveDifficulty(numericScore),
+                performance_score: numericScore,
+                quiz_title: quiz.title || 'Your quiz',
+                course_title: courseTitle
+            }, { timeout: 120000 });
+            adaptiveFeedback = adaptiveResponse.data;
+        } catch (adaptiveError: any) {
+            console.warn('Adaptive feedback generation failed:', adaptiveError.message);
+            adaptiveFeedback = {
+                level: getAdaptiveDifficulty(numericScore),
+                headline: numericScore >= 75
+                    ? 'You’ve earned a harder challenge'
+                    : numericScore < 50
+                        ? 'Time for a revision-focused quiz'
+                        : 'Your next quiz will stay balanced',
+                message: numericScore >= 75
+                    ? 'You’re performing strongly, so the next quiz will ask more analytical and challenging questions.'
+                    : numericScore < 50
+                        ? 'You need a little more reinforcement first, so the next quiz will revisit the basics more gently.'
+                        : 'You’re in a balanced zone, so the next quiz will mix review with moderate challenge.',
+                why_this_level: numericScore >= 75
+                    ? 'Strong performance means you are ready for deeper reasoning tasks.'
+                    : numericScore < 50
+                        ? 'Lower performance means the system should slow down and reinforce the foundation.'
+                        : 'Your performance suggests steady progress, so the quiz stays balanced.',
+                next_focus: numericScore >= 75
+                    ? 'Expect more scenario-based questions and subtle distractors.'
+                    : numericScore < 50
+                        ? 'Expect clearer revision questions and direct recall practice.'
+                        : 'Expect a mix of recall and concept application.',
+                encouragement: numericScore >= 75
+                    ? 'Keep going — you’re ready for a harder level.'
+                    : numericScore < 50
+                        ? 'This is part of the learning curve — revision will help you improve quickly.'
+                        : 'You’re building consistency well — keep it up.'
+            };
+        }
+
+        return res.status(200).json({
+            message: 'Quiz score updated successfully.',
+            quiz: updatedQuiz,
+            adaptiveLabel: getAdaptiveDifficulty(numericScore),
+            adaptiveFeedback
+        });
+    } catch (error: any) {
+        console.error('Update quiz score error:', error.message);
+        return res.status(500).json({ error: error.message });
     }
 };
 

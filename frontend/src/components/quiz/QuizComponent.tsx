@@ -19,10 +19,18 @@ interface Question {
 interface QuizProps {
     questions: Question[];
     materialId?: string;
+    adaptiveFeedback?: {
+        level?: string;
+        headline?: string;
+        message?: string;
+        why_this_level?: string;
+        next_focus?: string;
+        encouragement?: string;
+    } | null;
     onComplete: (score: number) => void;
 }
 
-export default function QuizComponent({ questions, materialId, onComplete }: QuizProps) {
+export default function QuizComponent({ questions, materialId, adaptiveFeedback, onComplete }: QuizProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<any>({});
     const [showExplanation, setShowExplanation] = useState(false);
@@ -230,11 +238,30 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
         } else {
             setIsFinished(true);
             // Calculate score for MCQs
+            const totalMcqs = questions.filter((q) => q.type === 'mcq').length || questions.length || 1;
             const score = questions.reduce((acc, q, idx) => {
                 if (q.type === 'mcq' && answers[idx] === q.answer) return acc + 1;
                 return acc;
             }, 0);
-            onComplete(score);
+            const scorePercent = Math.round((score / totalMcqs) * 100);
+
+            if (materialId && typeof window !== 'undefined') {
+                try {
+                    localStorage.setItem(
+                        `tutorbuddy-quiz-performance:${materialId}`,
+                        JSON.stringify({
+                            score: scorePercent,
+                            correct: score,
+                            totalMcqs,
+                            updatedAt: new Date().toISOString()
+                        })
+                    );
+                } catch {
+                    // ignore localStorage failures
+                }
+            }
+
+            onComplete(scorePercent);
         }
     };
 
@@ -265,6 +292,37 @@ export default function QuizComponent({ questions, materialId, onComplete }: Qui
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Quiz Completed!</h2>
                 <p className="text-gray-500 mb-8 font-medium">Your understanding has been evaluated by our AI.</p>
+                {adaptiveFeedback && (
+                    <div className="mb-8 rounded-3xl border border-blue-100 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/10 p-6 text-left">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-sm font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">
+                                Adaptive Level: {adaptiveFeedback.level || 'medium'}
+                            </span>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                            {adaptiveFeedback.headline || 'Your next quiz is being adjusted'}
+                        </h3>
+                        <p className="text-sm text-blue-800 dark:text-blue-300 font-medium leading-relaxed mb-4 whitespace-pre-line">
+                            {adaptiveFeedback.message || 'Your recent score is being used to personalize the next quiz.'}
+                        </p>
+                        {adaptiveFeedback.why_this_level && (
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                                <span className="font-bold">Why this level:</span> {adaptiveFeedback.why_this_level}
+                            </p>
+                        )}
+                        {adaptiveFeedback.next_focus && (
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                                <span className="font-bold">Next focus:</span> {adaptiveFeedback.next_focus}
+                            </p>
+                        )}
+                        {adaptiveFeedback.encouragement && (
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                                <span className="font-bold">TutorBuddy says:</span> {adaptiveFeedback.encouragement}
+                            </p>
+                        )}
+                    </div>
+                )}
                 <button 
                     onClick={() => window.location.reload()}
                     className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:scale-105 transition-all"
