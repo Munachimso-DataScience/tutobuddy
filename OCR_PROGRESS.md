@@ -38,7 +38,13 @@
 - If deployment changes again, update `AI_SERVICE_URL` in one place instead of touching the frontend.
 
 ## Current production failure mode
-- If the browser shows `net::ERR_CONNECTION_CLOSED` for `/api/ocr/evaluate`, the backend is reaching a timeout or cannot reach the AI service.
-- The most likely cause is a bad `AI_SERVICE_URL` in the deployed backend environment.
-- Another common cause is the AI service being cold or unavailable on a free host, which causes the proxy request to be closed before OCR finishes.
-- The browser session being active is unrelated; the login is working and the request is failing later in the OCR chain.
+- If the browser shows `404` for `POST /api/ocr/evaluate`, the deployed backend does not currently expose the OCR route.
+- That usually means the live Render deployment is still running an older build or the latest commit has not been deployed yet.
+- If the browser shows `net::ERR_CONNECTION_CLOSED`, the backend reached the route but failed while calling the Hugging Face Space.
+- The browser session being active is unrelated; login is working and the OCR request is failing later in the chain.
+
+## Production checklist
+1. Confirm the backend Render service has auto-deploy enabled for `main`.
+2. Trigger a manual redeploy of `tutobuddy-backend`.
+3. Verify the deployed commit includes `backend/src/index.ts` with `POST /api/ocr/evaluate`.
+4. Only after that, test whether the backend can reach `https://patienceigwe-tutorbuddy-ai.hf.space`.

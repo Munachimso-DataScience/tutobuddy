@@ -887,12 +887,25 @@ async def ocr_evaluate(file: UploadFile = File(...)):
 
         # --- Local Tesseract Fallback Path ---
         print("Processing general OCR via Local Tesseract...")
-        from PIL import Image
+        from PIL import Image, ImageOps, ImageFilter
         import io
         
         try:
             image = Image.open(io.BytesIO(img_bytes))
-            extracted_text = pytesseract.image_to_string(image)
+            image = ImageOps.exif_transpose(image)
+            image = image.convert("L")
+            image = ImageOps.autocontrast(image)
+
+            if image.width < 1600:
+                new_width = image.width * 2
+                new_height = image.height * 2
+                image = image.resize((new_width, new_height))
+
+            extracted_text = pytesseract.image_to_string(image, config="--oem 3 --psm 6")
+
+            if not extracted_text.strip():
+                sharpened_image = image.filter(ImageFilter.SHARPEN)
+                extracted_text = pytesseract.image_to_string(sharpened_image, config="--oem 3 --psm 11")
         except Exception as ocr_err:
             print(f"Local Tesseract OCR failed: {ocr_err}")
             extracted_text = ""

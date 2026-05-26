@@ -63,9 +63,20 @@ export default function OCRScanner() {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            setScannedText(response.data.text);
-            setEvaluation(response.data.evaluation);
-            toast.success('Notes processed successfully!');
+            const extractedText = (response.data?.text ?? '').trim();
+            const evaluation = response.data?.evaluation ?? null;
+
+            setScannedText(extractedText);
+            setEvaluation(evaluation);
+
+            if (extractedText) {
+                setError('');
+                toast.success('Notes processed successfully!');
+            } else {
+                const feedback = evaluation?.feedback || 'OCR completed, but no readable text was extracted.';
+                setError(feedback);
+                toast.warn('OCR completed, but no readable text was extracted');
+            }
         } catch {
             setError('Failed to process handwritten notes. Please try another image.');
             toast.error('Failed to process handwritten notes');

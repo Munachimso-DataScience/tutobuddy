@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     FileText,
@@ -29,6 +29,44 @@ import { account, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import QuizComponent from '@/components/quiz/QuizComponent';
 
+const splitTextIntoChunks = (text: string) => {
+    const normalized = text.replace(/\r\n/g, '\n').trim();
+
+    if (!normalized) return [];
+
+    const chunks: string[] = [];
+    const lines = normalized.split('\n').map((line) => line.trim()).filter(Boolean);
+    const sentencePattern = /[^.!?]+[.!?]+(?:["')\]]+)?|[^.!?]+$/g;
+
+    for (const line of lines) {
+        if (line.length <= 140) {
+            chunks.push(line);
+            continue;
+        }
+
+        const sentences = line.match(sentencePattern);
+        if (sentences && sentences.length > 0) {
+            chunks.push(...sentences.map((sentence) => sentence.trim()).filter(Boolean));
+        } else {
+            chunks.push(line);
+        }
+    }
+
+    return chunks.length > 0 ? chunks : [normalized];
+};
+
+const findChunkIndexFromCharIndex = (charIndex: number, chunks: string[]) => {
+    let cursor = 0;
+
+    for (let i = 0; i < chunks.length; i += 1) {
+        const end = cursor + chunks[i].length;
+        if (charIndex <= end) return i;
+        cursor = end + 1;
+    }
+
+    return Math.max(chunks.length - 1, 0);
+};
+
 export default function CourseDetailsPage() {
     const params = useParams();
     const courseId = params?.id as string;
@@ -54,7 +92,10 @@ export default function CourseDetailsPage() {
     const [ttsSpeed, setTtsSpeed] = useState(1);
     const [ttsProgress, setTtsProgress] = useState(0);
     const [ttsUtterance, setTtsUtterance] = useState<any>(null);
+    const [ttsChunks, setTtsChunks] = useState<string[]>([]);
+    const [ttsChunkIndex, setTtsChunkIndex] = useState(0);
     const [loadingTTS, setLoadingTTS] = useState<string | null>(null);
+    const ttsChunkRefs = useRef<Array<HTMLDivElement | null>>([]);
 
     // Summary States
     const [summaryActive, setSummaryActive] = useState(false);
@@ -69,6 +110,13 @@ export default function CourseDetailsPage() {
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (!ttsActive) return;
+
+        const activeChunk = ttsChunkRefs.current[ttsChunkIndex];
+        activeChunk?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [ttsActive, ttsChunkIndex]);
 
     const handleReadAloud = async (materialId: string, title: string) => {
         if (typeof window === 'undefined') return;
@@ -88,25 +136,30 @@ export default function CourseDetailsPage() {
                 toast.error("This resource does not have any speakable text.");
                 return;
             }
-            setTtsText(text);
+            const chunks = splitTextIntoChunks(text);
+            const spokenText = chunks.join(' ');
+
+            ttsChunkRefs.current = [];
+            setTtsText(spokenText);
+            setTtsChunks(chunks);
+            setTtsChunkIndex(0);
             setTtsTitle(title);
             setTtsActive(true);
             setTtsProgress(0);
             
-            const utterance = new SpeechSynthesisUtterance(text);
+            const utterance = new SpeechSynthesisUtterance(spokenText);
             utterance.rate = ttsSpeed;
             
-            let charIndex = 0;
             utterance.onboundary = (event) => {
-                if (event.name === 'word') {
-                    charIndex = event.charIndex;
-                    setTtsProgress(Math.floor((charIndex / text.length) * 100));
-                }
+                const charIndex = typeof event.charIndex === 'number' ? event.charIndex : 0;
+                setTtsProgress(Math.floor((charIndex / spokenText.length) * 100));
+                setTtsChunkIndex(findChunkIndexFromCharIndex(charIndex, chunks));
             };
             
             utterance.onend = () => {
                 setTtsPlaying(false);
                 setTtsProgress(100);
+                setTtsChunkIndex(Math.max(chunks.length - 1, 0));
             };
             
             utterance.onerror = () => {
@@ -148,6 +201,9 @@ export default function CourseDetailsPage() {
         setTtsActive(false);
         setTtsUtterance(null);
         setTtsProgress(0);
+        setTtsChunkIndex(0);
+        setTtsChunks([]);
+        ttsChunkRefs.current = [];
     };
 
     const handleTtsSpeedChange = (speed: number) => {
@@ -158,21 +214,22 @@ export default function CourseDetailsPage() {
             window.speechSynthesis.cancel();
             const charIndex = Math.floor((ttsProgress / 100) * ttsText.length);
             const remainingText = ttsText.substring(charIndex);
+            const chunks = ttsChunks.length > 0 ? ttsChunks : splitTextIntoChunks(ttsText);
             
             const newUtterance = new SpeechSynthesisUtterance(remainingText || ttsText);
             newUtterance.rate = speed;
             
             let charOffset = charIndex;
             newUtterance.onboundary = (event) => {
-                if (event.name === 'word') {
-                    const progressIndex = charOffset + event.charIndex;
-                    setTtsProgress(Math.floor((progressIndex / ttsText.length) * 100));
-                }
+                const progressIndex = charOffset + (typeof event.charIndex === 'number' ? event.charIndex : 0);
+                setTtsProgress(Math.floor((progressIndex / ttsText.length) * 100));
+                setTtsChunkIndex(findChunkIndexFromCharIndex(progressIndex, chunks));
             };
             
             newUtterance.onend = () => {
                 setTtsPlaying(false);
                 setTtsProgress(100);
+                setTtsChunkIndex(Math.max(chunks.length - 1, 0));
             };
             
             newUtterance.onerror = () => {
@@ -389,14 +446,14 @@ export default function CourseDetailsPage() {
                                 {materials.map((file) => (
                                     <div
                                         key={file.$id}
-                                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
+                                        className="flex flex-col gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer group sm:flex-row sm:items-center sm:justify-between"
                                     >
-                                        <div className="flex items-center space-x-4">
-                                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                        <div className="flex items-center space-x-4 min-w-0">
+                                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
                                                 <FileText className="h-5 w-5 text-blue-600" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors break-words">
                                                     {file.title}
                                                 </p>
                                                 <p className="text-xs text-gray-500 font-medium">
@@ -404,11 +461,11 @@ export default function CourseDetailsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:shrink-0">
                                             <button 
                                                 onClick={() => handleGenerateQuiz(file.$id)}
                                                 disabled={generatingQuiz}
-                                                className="flex items-center text-[10px] bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                                                className="inline-flex items-center text-[10px] bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
                                             >
                                                 {generatingQuiz ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Play className="h-3 w-3 mr-1 fill-current" />}
                                                 Start Quiz
@@ -416,7 +473,7 @@ export default function CourseDetailsPage() {
                                             <button 
                                                 onClick={() => handleSummarize(file.$id, file.title)}
                                                 disabled={loadingSummary !== null}
-                                                className="flex items-center text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-sm"
+                                                className="inline-flex items-center text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-sm whitespace-nowrap"
                                             >
                                                 {loadingSummary === file.$id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                                                 Summarize
@@ -424,7 +481,7 @@ export default function CourseDetailsPage() {
                                             <button 
                                                 onClick={() => handleReadAloud(file.$id, file.title)}
                                                 disabled={loadingTTS !== null}
-                                                className="flex items-center text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                                                className="inline-flex items-center text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm whitespace-nowrap"
                                             >
                                                 {loadingTTS === file.$id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Volume2 className="h-3 w-3 mr-1" />}
                                                 Read Aloud
@@ -564,65 +621,103 @@ export default function CourseDetailsPage() {
                         initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 100, opacity: 0 }}
-                        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 shadow-2xl p-6 px-8 rounded-t-3xl max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6"
+                        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 shadow-2xl p-6 px-8 rounded-t-3xl max-w-6xl mx-auto flex flex-col gap-5 max-h-[80vh] overflow-hidden"
                     >
-                        {/* Title & Info */}
-                        <div className="flex items-center space-x-4">
-                            <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-950/40 rounded-2xl flex items-center justify-center text-emerald-600 animate-pulse">
-                                <Volume2 className="h-6 w-6" />
+                        <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                            {/* Title & Info */}
+                            <div className="flex items-center space-x-4 min-w-0">
+                                <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-950/40 rounded-2xl flex items-center justify-center text-emerald-600 animate-pulse shrink-0">
+                                    <Volume2 className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">NOW READING</span>
+                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-xs">{ttsTitle}</h4>
+                                </div>
                             </div>
-                            <div>
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">NOW READING</span>
-                                <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-xs">{ttsTitle}</h4>
-                            </div>
-                        </div>
 
-                        {/* Controls */}
-                        <div className="flex items-center space-x-6">
-                            {/* Speed Controls */}
-                            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800/40">
-                                <span className="text-[9px] font-bold text-gray-400 px-2">SPEED</span>
-                                {[1, 1.25, 1.5, 2].map((s) => (
+                            {/* Controls */}
+                            <div className="flex flex-wrap items-center gap-4 lg:justify-end">
+                                <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800/40">
+                                    <span className="text-[9px] font-bold text-gray-400 px-2">SPEED</span>
+                                    {[1, 1.25, 1.5, 2].map((s) => (
+                                        <button 
+                                            key={s}
+                                            onClick={() => handleTtsSpeedChange(s)}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${ttsSpeed === s ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                        >
+                                            {s}x
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex items-center space-x-3">
                                     <button 
-                                        key={s}
-                                        onClick={() => handleTtsSpeedChange(s)}
-                                        className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${ttsSpeed === s ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                        onClick={handleTtsPlayPause}
+                                        aria-label={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
+                                        title={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
+                                        className="h-10 w-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:scale-105 transition-all shadow-md shadow-emerald-500/20"
                                     >
-                                        {s}x
+                                        {ttsPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
                                     </button>
-                                ))}
-                            </div>
-
-                            {/* Player Main Buttons */}
-                            <div className="flex items-center space-x-3">
-                                <button 
-                                    onClick={handleTtsPlayPause}
-                                    aria-label={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
-                                    title={ttsPlaying ? "Pause text-to-speech" : "Play text-to-speech"}
-                                    className="h-10 w-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:scale-105 transition-all shadow-md shadow-emerald-500/20"
-                                >
-                                    {ttsPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
-                                </button>
-                                <button 
-                                    onClick={handleTtsStop}
-                                    aria-label="Stop playback"
-                                    title="Stop playback"
-                                    className="h-10 w-10 bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-red-500 rounded-full flex items-center justify-center hover:scale-105 transition-all"
-                                >
-                                    <Square className="h-4 w-4 fill-current" />
-                                </button>
+                                    <button 
+                                        onClick={handleTtsStop}
+                                        aria-label="Stop playback"
+                                        title="Stop playback"
+                                        className="h-10 w-10 bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-red-500 rounded-full flex items-center justify-center hover:scale-105 transition-all"
+                                    >
+                                        <Square className="h-4 w-4 fill-current" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Progress Waveform / Bar */}
-                        <div className="w-full md:w-64 flex flex-col space-y-1">
-                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
-                                <span>PROGRESS</span>
-                                <span>{ttsProgress}%</span>
+                        <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+                            <div className="rounded-2xl border border-emerald-100/70 dark:border-emerald-900/30 bg-emerald-50/70 dark:bg-emerald-950/15 p-4">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                    <div>
+                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">FOLLOW ALONG</span>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            Highlighted text follows the current spoken chunk.
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400">
+                                        {ttsChunks.length > 0 ? `${ttsChunkIndex + 1}/${ttsChunks.length}` : '0/0'}
+                                    </span>
+                                </div>
+                                <div className="max-h-52 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                                    {ttsChunks.length > 0 ? (
+                                        ttsChunks.map((chunk, index) => (
+                                            <div
+                                                key={`${ttsTitle}-${index}`}
+                                                ref={(el) => {
+                                                    ttsChunkRefs.current[index] = el;
+                                                }}
+                                                className={`rounded-xl px-3 py-2 text-sm leading-6 transition-all ${
+                                                    index === ttsChunkIndex
+                                                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20 ring-2 ring-emerald-300/60'
+                                                        : 'bg-white/80 dark:bg-gray-900/70 text-gray-700 dark:text-gray-300 border border-transparent'
+                                                }`}
+                                            >
+                                                {chunk}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="rounded-xl border border-dashed border-emerald-200 dark:border-emerald-900/40 bg-white/60 dark:bg-gray-900/40 p-4 text-sm text-gray-500">
+                                            No readable text is currently available for follow-along view.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                <style>{`.tts-progress-fill { width: ${ttsProgress}% }`}</style>
-                                <div className="h-full bg-emerald-500 transition-all duration-300 tts-progress-fill" />
+
+                            <div className="w-full flex flex-col space-y-1 rounded-2xl border border-gray-100 dark:border-gray-800/40 bg-gray-50/80 dark:bg-gray-800/40 p-4">
+                                <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
+                                    <span>PROGRESS</span>
+                                    <span>{ttsProgress}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                    <style>{`.tts-progress-fill { width: ${ttsProgress}% }`}</style>
+                                    <div className="h-full bg-emerald-500 transition-all duration-300 tts-progress-fill" />
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -693,8 +788,12 @@ export default function CourseDetailsPage() {
                                                 .replace(/[#*`_~]/g, '')
                                                 .replace(/-\s+/g, '')
                                                 .trim();
+                                            const chunks = splitTextIntoChunks(cleanText);
                                             
+                                            ttsChunkRefs.current = [];
                                             setTtsText(cleanText);
+                                            setTtsChunks(chunks);
+                                            setTtsChunkIndex(0);
                                             setTtsTitle(`Summary of ${summaryTitle}`);
                                             setTtsActive(true);
                                             setTtsProgress(0);
@@ -702,17 +801,16 @@ export default function CourseDetailsPage() {
                                             const utterance = new SpeechSynthesisUtterance(cleanText);
                                             utterance.rate = ttsSpeed;
                                             
-                                            let charIndex = 0;
                                             utterance.onboundary = (event) => {
-                                                if (event.name === 'word') {
-                                                    charIndex = event.charIndex;
-                                                    setTtsProgress(Math.floor((charIndex / cleanText.length) * 100));
-                                                }
+                                                const charIndex = typeof event.charIndex === 'number' ? event.charIndex : 0;
+                                                setTtsProgress(Math.floor((charIndex / cleanText.length) * 100));
+                                                setTtsChunkIndex(findChunkIndexFromCharIndex(charIndex, chunks));
                                             };
                                             
                                             utterance.onend = () => {
                                                 setTtsPlaying(false);
                                                 setTtsProgress(100);
+                                                setTtsChunkIndex(Math.max(chunks.length - 1, 0));
                                             };
                                             
                                             utterance.onerror = () => {
