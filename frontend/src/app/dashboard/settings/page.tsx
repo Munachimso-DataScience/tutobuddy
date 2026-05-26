@@ -104,6 +104,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(false);
     const [smtpLoading, setSmtpLoading] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; ready?: boolean; host?: string; fromEmail?: string } | null>(null);
+    const showSmtpStatusCard = false;
     const [theme, setTheme] = useState<ThemeMode>('dark');
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [studyReminders, setStudyReminders] = useState(true);
@@ -219,6 +220,27 @@ export default function SettingsPage() {
         }
     };
 
+    const handleEnableBrowserNotifications = async () => {
+        if (typeof window === 'undefined' || !('Notification' in window)) {
+            toast.error('Your browser does not support notifications.');
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                new Notification('TutorBuddy notifications enabled', {
+                    body: 'You will now receive browser alerts for new study updates.'
+                });
+                toast.success('Browser notifications enabled!');
+            } else {
+                toast.info('Browser notifications were not enabled.');
+            }
+        } catch {
+            toast.error('Unable to request notification permission.');
+        }
+    };
+
     return (
         <div className="space-y-8 pb-10">
             <div className="rounded-3xl border border-primary/10 bg-linear-to-br from-primary/10 via-background to-secondary/10 p-6 md:p-8 shadow-sm">
@@ -315,6 +337,14 @@ export default function SettingsPage() {
                                 onChange={setWeeklySummary}
                             />
                         </div>
+                        <button
+                            type="button"
+                            onClick={handleEnableBrowserNotifications}
+                            className="mt-4 flex items-center gap-2 rounded-2xl border border-primary/10 bg-background/70 px-4 py-3 text-sm font-bold text-foreground transition-all hover:border-secondary/30 hover:bg-surface/90 dark:bg-background/20 dark:text-cream"
+                        >
+                            <Bell className="h-4 w-4 text-secondary" />
+                            Enable Browser Notifications
+                        </button>
                     </div>
 
                     <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
@@ -364,6 +394,7 @@ export default function SettingsPage() {
                         </button>
                     </div>
 
+                    {showSmtpStatusCard && (
                     <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
                         <div className="flex items-center justify-between gap-3 mb-4">
                             <div>
@@ -388,6 +419,7 @@ export default function SettingsPage() {
                             Send Test Email
                         </button>
                     </div>
+                    )}
 
                     <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
                         <div className="flex items-center gap-3">

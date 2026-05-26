@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import axios from 'axios';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -23,6 +24,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { API_URL } from '@/lib/api';
+import { client, getCachedJWT } from '@/lib/appwrite';
+
+type NotificationItem = {
+    $id: string;
+    title: string;
+    message: string;
+    link?: string;
+    type?: string;
+    source?: string;
+    is_read?: boolean;
+    created_at?: string;
+};
+
+const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'tutorbuddy';
+const NOTIFICATIONS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID || 'notifications';
 
 const SidebarItem = ({ icon: Icon, label, href, active = false, onClick }: { icon: LucideIcon, label: string, href: string, active?: boolean, onClick?: () => void }) => (
     <Link href={href} onClick={onClick}>
@@ -43,33 +60,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [showNotifications, setShowNotifications] = React.useState(false);
-    const [notificationSummary, setNotificationSummary] = React.useState({
-        emailAlerts: true,
-        studyReminders: true,
-        weeklySummary: true
-    });
-
-    React.useEffect(() => {
-        try {
-            const saved = localStorage.getItem('tutobuddy-notification-preferences');
-            if (!saved) return;
-
-            const parsed = JSON.parse(saved);
-            setNotificationSummary({
-                emailAlerts: typeof parsed.emailAlerts === 'boolean' ? parsed.emailAlerts : true,
-                studyReminders: typeof parsed.studyReminders === 'boolean' ? parsed.studyReminders : true,
-                weeklySummary: typeof parsed.weeklySummary === 'boolean' ? parsed.weeklySummary : true
-            });
-        } catch {
-            // ignore invalid saved preferences
-        }
-    }, []);
-
-    const activeNotifications = [
-        notificationSummary.emailAlerts && { label: 'Email alerts enabled', href: '/dashboard/settings' },
-        notificationSummary.studyReminders && { label: 'Study reminders enabled', href: '/dashboard/courses' },
-        notificationSummary.weeklySummary && { label: 'Weekly summaries enabled', href: '/dashboard/reports' }
-    ].filter(Boolean) as { label: string; href: string }[];
+    const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
+    const [unreadCount, setUnreadCount] = React.useState(0);
+    const [loadingNotifications, setLoadingNotifications] = React.useState(false);
 
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -81,6 +74,69 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ];
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+    const fetchNotifications = React.useCallback(async () => {
+        if (!user) return;
+
+        try {
+            setLoadingNotifications(true);
+            const jwt = await getCachedJWT();
+            const res = await axios.get(`${API_URL}/api/notifications`, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            setNotifications(res.data.notifications || []);
+            setUnreadCount(res.data.unreadCount || 0);
+        } catch {
+            setNotifications([]);
+            setUnreadCount(0);
+        } finally {
+            setLoadingNotifications(false);
+        }
+    }, [user]);
+
+    React.useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
+
+    React.useEffect(() => {
+        if (!user) return;
+
+        const channel = `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents`;
+        const unsubscribe = client.subscribe(channel, (response) => {
+            const payload = response.payload as NotificationItem | undefined;
+            if (!payload || payload.$id && payload.$id.startsWith('temp')) return;
+
+            if (payload.is_read === false && payload.title) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    try {
+                        new Notification(payload.title, {
+                            body: payload.message,
+                            icon: '/favicon.ico'
+                        });
+                    } catch {
+                        // ignore browser notification errors
+                    }
+                }
+            }
+
+            fetchNotifications();
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [fetchNotifications, user]);
+
+    const handleNotificationClick = async (notification: NotificationItem) => {
+        try {
+            const jwt = await getCachedJWT();
+            await axios.patch(`${API_URL}/api/notifications/${notification.$id}/read`, {}, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+        } catch {
+            // ignore read errors
+        }
+    };
 
     return (
         <ProtectedRoute>
@@ -184,7 +240,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     aria-hidden="true"
                                     className="absolute top-1 right-1 h-4 min-w-4 px-1 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900"
                                 >
-                                    {activeNotifications.length}
+                                    {unreadCount}
                                 </span>
                             </button>
                             {showNotifications && (
@@ -192,7 +248,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <div className="flex items-center justify-between mb-3">
                                         <div>
                                             <p className="text-sm font-bold text-foreground dark:text-cream">Notifications</p>
-                                            <p className="text-xs text-foreground/50 dark:text-cream/50">Your study reminders and email alerts</p>
+                                            <p className="text-xs text-foreground/50 dark:text-cream/50">Your study reminders, reports, and course alerts</p>
                                         </div>
                                         <button
                                             type="button"
@@ -203,20 +259,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                     </div>
                                     <div className="space-y-2">
-                                        {activeNotifications.length > 0 ? (
-                                            activeNotifications.map((item) => (
+                                        {loadingNotifications ? (
+                                            <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
+                                                Loading notifications...
+                                            </div>
+                                        ) : notifications.length > 0 ? (
+                                            notifications.map((item) => (
                                                 <Link
-                                                    key={item.label}
-                                                    href={item.href}
-                                                    onClick={() => setShowNotifications(false)}
-                                                    className="block rounded-2xl border border-primary/10 bg-background/70 px-3 py-2 text-sm text-foreground transition-all hover:border-secondary/30 hover:bg-surface/90 dark:bg-background/20 dark:text-cream dark:hover:bg-surface-2/60"
+                                                    key={item.$id}
+                                                    href={item.link || '/dashboard'}
+                                                    onClick={() => {
+                                                        handleNotificationClick(item);
+                                                        setShowNotifications(false);
+                                                    }}
+                                                    className={`block rounded-2xl border px-3 py-3 text-sm transition-all hover:border-secondary/30 hover:bg-surface/90 dark:hover:bg-surface-2/60 ${
+                                                        item.is_read
+                                                            ? 'border-primary/10 bg-background/60 text-foreground/80 dark:bg-background/20 dark:text-cream/70'
+                                                            : 'border-secondary/20 bg-secondary/10 text-foreground dark:bg-secondary/10 dark:text-cream'
+                                                    }`}
                                                 >
-                                                    {item.label}
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="space-y-1">
+                                                            <p className="font-bold">{item.title}</p>
+                                                            <p className="text-xs text-foreground/60 dark:text-cream/60 leading-relaxed">{item.message}</p>
+                                                        </div>
+                                                        {!item.is_read && (
+                                                            <span className="mt-1 h-2.5 w-2.5 rounded-full bg-secondary flex-shrink-0" />
+                                                        )}
+                                                    </div>
                                                 </Link>
                                             ))
                                         ) : (
                                             <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
-                                                No active reminders yet. Save your notification settings to turn them on.
+                                                No notifications yet. Your weekly reports and course reminders will appear here.
                                             </div>
                                         )}
                                     </div>

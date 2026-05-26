@@ -7,6 +7,7 @@ export const COLLECTIONS = {
     MATERIALS: 'study_materials',
     QUIZZES: 'quizzes',
     ACTIVITY: 'activity_logs',
+    NOTIFICATIONS: 'notifications',
     TASKS: 'tasks',
     SCHEDULES: 'schedules'
 };

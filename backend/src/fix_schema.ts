@@ -83,6 +83,20 @@ const schema = [
         ]
     },
     {
+        id: COLLECTIONS.NOTIFICATIONS,
+        name: 'Notifications',
+        attributes: [
+            { key: 'user_id', type: 'string', size: 255, required: false },
+            { key: 'title', type: 'string', size: 255, required: false },
+            { key: 'message', type: 'string', size: 5000, required: false },
+            { key: 'link', type: 'string', size: 500, required: false },
+            { key: 'type', type: 'string', size: 50, required: false, default: 'system' },
+            { key: 'source', type: 'string', size: 50, required: false, default: 'app' },
+            { key: 'is_read', type: 'boolean', required: false, default: false },
+            { key: 'created_at', type: 'datetime', required: false }
+        ]
+    },
+    {
         id: COLLECTIONS.TASKS,
         name: 'Tasks',
         attributes: [

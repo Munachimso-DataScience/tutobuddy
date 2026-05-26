@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
 import { users, databases } from '../lib/appwrite-admin';
-import { Query } from 'node-appwrite';
+import { ID, Query } from 'node-appwrite';
 import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 
 // Validate email configuration
@@ -81,6 +81,110 @@ const buildEmailCTA = (primaryLabel: string, primaryUrl: string, secondaryLabel:
     </div>
 `;
 
+const notificationTemplates = {
+    inactivity: {
+        title: "We haven't seen you in 48 hours",
+        message: 'Jump back into your courses and keep your study momentum going.',
+        link: '/dashboard/courses',
+        type: 'reminder',
+        source: 'activity'
+    },
+    weeklyReport: {
+        title: 'Your weekly progress report is ready',
+        message: 'Open your latest report to see study activity and readiness trends.',
+        link: '/dashboard/reports',
+        type: 'report',
+        source: 'weekly_report'
+    },
+    testEmail: {
+        title: 'SMTP test successful',
+        message: 'Your Brevo SMTP integration is working correctly.',
+        link: '/dashboard/settings',
+        type: 'system',
+        source: 'smtp_test'
+    }
+} as const;
+
+type NotificationPayload = {
+    userId: string;
+    title: string;
+    message: string;
+    link?: string;
+    type?: string;
+    source?: string;
+};
+
+const createInAppNotification = async ({
+    userId,
+    title,
+    message,
+    link = '/dashboard',
+    type = 'system',
+    source = 'app'
+}: NotificationPayload) => {
+    try {
+        await databases.createDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, ID.unique(), {
+            user_id: userId,
+            title,
+            message,
+            link,
+            type,
+            source,
+            is_read: false,
+            created_at: new Date().toISOString()
+        });
+    } catch (error: any) {
+        console.warn(`Failed to create in-app notification for ${userId}:`, error.message);
+    }
+};
+
+export const getNotifications = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.$id;
+        const [notifications, unread] = await Promise.all([
+            databases.listDocuments(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, [
+                Query.equal('user_id', userId),
+                Query.orderDesc('created_at'),
+                Query.limit(12)
+            ]),
+            databases.listDocuments(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, [
+                Query.equal('user_id', userId),
+                Query.equal('is_read', false),
+                Query.limit(50)
+            ])
+        ]);
+
+        return res.status(200).json({
+            notifications: notifications.documents,
+            unreadCount: unread.total
+        });
+    } catch (error: any) {
+        console.error('Get notifications error:', error.message);
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const markNotificationRead = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = (req as any).user.$id;
+
+        const notification = await databases.getDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, id);
+        if (notification.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        await databases.updateDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, id, {
+            is_read: true
+        });
+
+        return res.status(200).json({ message: 'Notification marked as read.' });
+    } catch (error: any) {
+        console.error('Mark notification read error:', error.message);
+        return res.status(500).json({ error: error.message });
+    }
+};
+
 export const getSmtpStatus = async (_req: Request, res: Response) => {
     return res.status(200).json({
         ...smtpStatus,
@@ -120,6 +224,15 @@ export const sendTestEmail = async (req: Request, res: Response) => {
                 <p>If you received this email, your sender, key, and SMTP settings are valid.</p>
                 ${buildEmailCTA('Open Dashboard', links.dashboard, 'Open Settings', links.settings)}
             `
+        });
+
+        await createInAppNotification({
+            userId: user.$id,
+            title: notificationTemplates.testEmail.title,
+            message: notificationTemplates.testEmail.message,
+            link: notificationTemplates.testEmail.link,
+            type: notificationTemplates.testEmail.type,
+            source: notificationTemplates.testEmail.source
         });
 
         return res.status(200).json({
@@ -167,23 +280,25 @@ export const checkInactivity = async (req: Request, res: Response) => {
 
         let successCount = 0;
         let failCount = 0;
-
-        if (!isEmailConfigured) {
-            const message = 'Email service not configured. Inactivity reminder preview generated, but no email was sent.';
-            console.log(message);
-            if (res) {
-                return res.status(200).json({
-                    warning: message,
-                    inactiveUsers: inactiveUsers.length,
-                    successCount: 0,
-                    failCount: 0
-                });
-            }
-            return;
-        }
+        let notificationCount = 0;
 
         for (const user of inactiveUsers) {
             try {
+                await createInAppNotification({
+                    userId: user.$id,
+                    title: notificationTemplates.inactivity.title,
+                    message: notificationTemplates.inactivity.message,
+                    link: links.courses,
+                    type: notificationTemplates.inactivity.type,
+                    source: notificationTemplates.inactivity.source
+                });
+                notificationCount++;
+
+                if (!isEmailConfigured) {
+                    console.log(`In-app inactivity notification created for ${user.email}; email skipped.`);
+                    continue;
+                }
+
                 await transporter.sendMail({
                     from: smtpFromAddress,
                     to: user.email,
@@ -201,10 +316,13 @@ export const checkInactivity = async (req: Request, res: Response) => {
 
         if (res) {
             res.status(200).json({
-                message: `Reminders sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`,
+                message: isEmailConfigured
+                    ? `Reminders sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`
+                    : 'In-app inactivity reminders created, but email delivery is disabled.',
                 successCount,
                 failCount,
-                inactiveUsers: inactiveUsers.length
+                inactiveUsers: inactiveUsers.length,
+                notificationsCreated: notificationCount
             });
         }
     } catch (error: any) {
@@ -215,13 +333,6 @@ export const checkInactivity = async (req: Request, res: Response) => {
 
 export const generateWeeklyReports = async (req: Request, res: Response) => {
     try {
-        if (!isEmailConfigured) {
-            const message = 'Email service not configured. Skipping weekly reports.';
-            console.log(message);
-            if (res) return res.status(503).json({ warning: message });
-            return;
-        }
-
         const response = await users.list();
         const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -230,10 +341,10 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
 
         let successCount = 0;
         let failCount = 0;
+        let notificationCount = 0;
 
         for (const user of response.users) {
             try {
-                // Aggregate activity for the week
                 const activity = await databases.listDocuments(
                     DATABASE_ID,
                     COLLECTIONS.ACTIVITY,
@@ -244,6 +355,21 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
                 );
 
                 const activitiesCount = activity.total;
+
+                await createInAppNotification({
+                    userId: user.$id,
+                    title: notificationTemplates.weeklyReport.title,
+                    message: `${notificationTemplates.weeklyReport.message} You completed ${activitiesCount} activity${activitiesCount === 1 ? '' : 'ies'} this week.`,
+                    link: links.reports,
+                    type: notificationTemplates.weeklyReport.type,
+                    source: notificationTemplates.weeklyReport.source
+                });
+                notificationCount++;
+
+                if (!isEmailConfigured) {
+                    console.log(`In-app weekly report created for ${user.email}; email skipped.`);
+                    continue;
+                }
 
                 await transporter.sendMail({
                     from: smtpFromAddress,
@@ -270,9 +396,12 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
 
         if (res) {
             res.status(200).json({
-                message: `Weekly reports sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`,
+                message: isEmailConfigured
+                    ? `Weekly reports sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`
+                    : 'In-app weekly reports created, but email delivery is disabled.',
                 successCount,
-                failCount
+                failCount,
+                notificationsCreated: notificationCount
             });
         }
     } catch (error: any) {
