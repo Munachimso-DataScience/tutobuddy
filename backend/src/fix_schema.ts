@@ -22,7 +22,14 @@ const schema = [
             { key: 'school', type: 'string', size: 255, required: false },
             { key: 'course_of_study', type: 'string', size: 255, required: false },
             { key: 'current_streak', type: 'integer', required: false, default: 0 },
-            { key: 'last_active', type: 'datetime', required: false }
+            { key: 'last_active', type: 'datetime', required: false },
+            { key: 'study_minutes_total', type: 'integer', required: false, default: 0 },
+            { key: 'study_minutes_today', type: 'integer', required: false, default: 0 },
+            { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'last_study_summary', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'weekly_weaknesses', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'last_study_session_at', type: 'datetime', required: false }
         ]
     },
     {

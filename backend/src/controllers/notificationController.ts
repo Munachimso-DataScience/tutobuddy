@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 import { users, databases } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
@@ -135,6 +136,150 @@ const createInAppNotification = async ({
         });
     } catch (error: any) {
         console.warn(`Failed to create in-app notification for ${userId}:`, error.message);
+    }
+};
+
+type StudySummary = {
+    totalMinutes: number;
+    contentCovered: string[];
+    studySessions: number;
+    summaryText: string;
+};
+
+const parseActivityDetails = (details: unknown) => {
+    if (typeof details === 'string') {
+        try {
+            return JSON.parse(details);
+        } catch {
+            return {};
+        }
+    }
+
+    if (details && typeof details === 'object') {
+        return details as Record<string, any>;
+    }
+
+    return {};
+};
+
+const normalizeLabel = (value: unknown) => {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : '';
+};
+
+const getStudySummaryForUser = async (userId: string, days = 7): Promise<StudySummary> => {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const logs = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.ACTIVITY,
+        [
+            Query.equal('user_id', userId),
+            Query.greaterThan('timestamp', since),
+            Query.limit(200)
+        ]
+    );
+
+    const contentSet = new Set<string>();
+    let totalMinutes = 0;
+    let studySessions = 0;
+
+    for (const log of logs.documents) {
+        if (log.type !== 'study_session') continue;
+        studySessions += 1;
+        const details = parseActivityDetails(log.details);
+        const duration = Math.max(0, Number(details.duration) || 0);
+        totalMinutes += duration;
+
+        const label = normalizeLabel(details.contentTitle || details.courseTitle || details.topic || details.courseId || details.course_id);
+        if (label) {
+            contentSet.add(label);
+        }
+    }
+
+    return {
+        totalMinutes,
+        contentCovered: Array.from(contentSet).slice(0, 12),
+        studySessions,
+        summaryText: totalMinutes > 0
+            ? `You studied for ${totalMinutes} minute${totalMinutes === 1 ? '' : 's'} across ${studySessions} session${studySessions === 1 ? '' : 's'}.`
+            : 'No study sessions were recorded in this period.'
+    };
+};
+
+const getWeaknessDigest = async (userId: string, days = 7) => {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const logs = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.ACTIVITY,
+        [
+            Query.equal('user_id', userId),
+            Query.greaterThan('timestamp', since),
+            Query.limit(200)
+        ]
+    );
+
+    const incorrectData = logs.documents
+        .filter(doc => doc.type === 'quiz_incorrect')
+        .map(doc => {
+            const details = parseActivityDetails(doc.details);
+            const question = normalizeLabel(
+                details.question_text ||
+                details.question ||
+                details.prompt ||
+                details.questionTitle ||
+                details.question_text_content
+            );
+            const correctAnswer = normalizeLabel(
+                details.correct_answer ||
+                details.correctAnswer ||
+                details.answer ||
+                details.expected_answer
+            );
+
+            if (!question && !correctAnswer) return null;
+            return {
+                question: question || 'Study concept',
+                correct_answer: correctAnswer || 'Review this concept'
+            };
+        })
+        .filter((item): item is { question: string; correct_answer: string } => item !== null);
+
+    if (incorrectData.length === 0) {
+        return {
+            weaknesses: [],
+            recommendations: ['Keep practicing to reveal stronger weakness patterns.']
+        };
+    }
+
+    try {
+        const aiUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+        const response = await axios.post(`${aiUrl.startsWith('http') ? aiUrl : `http://${aiUrl}`}/analyze-weakness`, {
+            incorrect_data: incorrectData
+        }, { timeout: 120000 });
+        return response.data;
+    } catch (error: any) {
+        console.warn(`Weakness digest generation failed for ${userId}:`, error.message);
+        const topWeaknesses = incorrectData.slice(0, 3).map(item => item.correct_answer);
+        return {
+            weaknesses: topWeaknesses,
+            recommendations: topWeaknesses.length > 0
+                ? [`Review ${topWeaknesses.join(', ')} in the source material.`]
+                : ['Review your recent quiz mistakes.']
+        };
+    }
+};
+
+const updateStudyProfileSnapshot = async (userId: string, summary: StudySummary, weaknesses: string[]) => {
+    try {
+        await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
+            recent_content_covered: summary.contentCovered.join(', '),
+            last_study_summary: summary.summaryText,
+            weekly_weaknesses: weaknesses.join(', '),
+            last_study_session_at: new Date().toISOString()
+        });
+    } catch (error: any) {
+        console.warn(`Failed to update study snapshot for ${userId}:`, error.message);
     }
 };
 
@@ -354,12 +499,33 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
                     ]
                 );
 
-                const activitiesCount = activity.total;
+                const quizzes = await databases.listDocuments(
+                    DATABASE_ID,
+                    COLLECTIONS.QUIZZES,
+                    [
+                        Query.equal('user_id', user.$id),
+                        Query.greaterThan('date_taken', oneWeekAgo)
+                    ]
+                ).catch(() => ({ documents: [], total: 0 }));
+
+                const studySummary = await getStudySummaryForUser(user.$id, 7);
+                const weaknessDigest = await getWeaknessDigest(user.$id, 7);
+                const weaknesses = Array.isArray((weaknessDigest as any)?.weaknesses) ? (weaknessDigest as any).weaknesses : [];
+                const recommendations = Array.isArray((weaknessDigest as any)?.recommendations) ? (weaknessDigest as any).recommendations : [];
+                const avgScore = quizzes.total > 0
+                    ? Math.round(quizzes.documents.reduce((acc: number, quiz: any) => acc + (Number(quiz.score) || 0), 0) / quizzes.total)
+                    : 0;
+
+                await updateStudyProfileSnapshot(user.$id, studySummary, weaknesses);
+
+                const weaknessText = weaknesses.length > 0 ? ` Weak areas to review: ${weaknesses.join(', ')}.` : '';
+                const recommendationText = recommendations.length > 0 ? ` ${recommendations[0]}` : '';
+                const summaryMessage = `${studySummary.summaryText}${weaknessText}`.trim();
 
                 await createInAppNotification({
                     userId: user.$id,
                     title: notificationTemplates.weeklyReport.title,
-                    message: `${notificationTemplates.weeklyReport.message} You completed ${activitiesCount} activity${activitiesCount === 1 ? '' : 'ies'} this week.`,
+                    message: `${summaryMessage}${recommendationText}`,
                     link: links.reports,
                     type: notificationTemplates.weeklyReport.type,
                     source: notificationTemplates.weeklyReport.source
@@ -371,26 +537,34 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
                     continue;
                 }
 
+                const weaknessSection = weaknesses.length > 0
+                    ? `<p><b>Weaknesses:</b> ${weaknesses.join(', ')}</p><p><b>Next step:</b> ${recommendations[0] || 'Keep reviewing the flagged concepts.'}</p>`
+                    : '<p>You have not built enough error data yet for a weakness breakdown. Keep taking quizzes.</p>';
+
                 await transporter.sendMail({
                     from: smtpFromAddress,
                     to: user.email,
-                    subject: "Your Weekly Progress Report 📈",
+                    subject: 'Your Weekly Progress Report',
                     html: `
                         <h2>Weekly Summary for ${user.name}</h2>
-                        <p>Great job staying focused this week!</p>
+                        <p>${studySummary.summaryText}</p>
                         <ul>
-                            <li><b>Activities Logged:</b> ${activitiesCount}</li>
-                            <li><b>New Materials Studied:</b> ${Math.floor(activitiesCount / 3)}</li>
+                            <li><b>Activities Logged:</b> ${activity.total}</li>
+                            <li><b>Study Sessions:</b> ${studySummary.studySessions}</li>
+                            <li><b>Study Minutes:</b> ${studySummary.totalMinutes}</li>
+                            <li><b>Quiz Average:</b> ${avgScore}%</li>
+                            <li><b>Content Covered:</b> ${studySummary.contentCovered.length > 0 ? studySummary.contentCovered.join(', ') : 'No titled content captured yet'}</li>
                         </ul>
+                        ${weaknessSection}
                         <p>Keep pushing towards your goals!</p>
                         ${buildEmailCTA('View Weekly Report', links.reports, 'Open Courses', links.courses)}
                     `
                 });
                 successCount++;
-                console.log(`✓ Sent weekly report to ${user.email}`);
+                console.log(`? Sent weekly report to ${user.email}`);
             } catch (emailError: any) {
                 failCount++;
-                console.error(`✗ Failed to send report to ${user.email}:`, emailError.message);
+                console.error(`? Failed to send report to ${user.email}:`, emailError.message);
             }
         }
 
@@ -409,3 +583,190 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
         if (res) res.status(500).json({ error: error.message });
     }
 };
+
+export const sendDailyStudySummaries = async (req: Request, res: Response) => {
+    try {
+        const response = await users.list();
+        const links = buildNotificationLinks();
+        let successCount = 0;
+        let failCount = 0;
+        let notificationCount = 0;
+
+        for (const user of response.users) {
+            try {
+                const studySummary = await getStudySummaryForUser(user.$id, 1);
+                if (studySummary.totalMinutes <= 0 && studySummary.studySessions === 0) {
+                    continue;
+                }
+
+                const weaknessDigest = await getWeaknessDigest(user.$id, 1);
+                const weaknesses = Array.isArray((weaknessDigest as any)?.weaknesses) ? (weaknessDigest as any).weaknesses : [];
+                const recommendations = Array.isArray((weaknessDigest as any)?.recommendations) ? (weaknessDigest as any).recommendations : [];
+
+                await updateStudyProfileSnapshot(user.$id, studySummary, weaknesses);
+
+                await createInAppNotification({
+                    userId: user.$id,
+                    title: 'Your daily study summary is ready',
+                    message: `${studySummary.summaryText}${weaknesses.length > 0 ? ` Weak areas: ${weaknesses.join(', ')}.` : ''}`,
+                    link: links.reports,
+                    type: 'summary',
+                    source: 'daily_summary'
+                });
+                notificationCount++;
+
+                if (!isEmailConfigured) {
+                    console.log(`In-app daily summary created for ${user.email}; email skipped.`);
+                    continue;
+                }
+
+                await transporter.sendMail({
+                    from: smtpFromAddress,
+                    to: user.email,
+                    subject: 'Your Daily Study Summary',
+                    html: `
+                        <h2>Daily Study Summary</h2>
+                        <p>Hello ${user.name},</p>
+                        <p>${studySummary.summaryText}</p>
+                        <ul>
+                            <li><b>Study Minutes:</b> ${studySummary.totalMinutes}</li>
+                            <li><b>Study Sessions:</b> ${studySummary.studySessions}</li>
+                            <li><b>Content Covered:</b> ${studySummary.contentCovered.length > 0 ? studySummary.contentCovered.join(', ') : 'No labeled content captured yet'}</li>
+                        </ul>
+                        ${weaknesses.length > 0 ? `<p><b>Quick Weakness Note:</b> ${weaknesses.join(', ')}</p><p>${recommendations[0] || 'Keep reviewing your mistakes.'}</p>` : ''}
+                        ${buildEmailCTA('Open Reports', links.reports, 'Open Dashboard', links.dashboard)}
+                    `
+                });
+                successCount++;
+            } catch (error: any) {
+                failCount++;
+                console.error(`Daily summary error for ${user.email}:`, error.message);
+            }
+        }
+
+        if (res) {
+            res.status(200).json({
+                message: isEmailConfigured
+                    ? `Daily study summaries sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`
+                    : 'In-app daily study summaries created, but email delivery is disabled.',
+                successCount,
+                failCount,
+                notificationsCreated: notificationCount
+            });
+        }
+    } catch (error: any) {
+        console.error('Daily summary generation error:', error.message);
+        if (res) res.status(500).json({ error: error.message });
+    }
+};
+
+export const sendStudySessionReminders = async (req: Request, res: Response) => {
+    try {
+        const response = await users.list();
+        const links = buildNotificationLinks();
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const reminderCutoff = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        let successCount = 0;
+        let failCount = 0;
+        let notificationCount = 0;
+
+        for (const user of response.users) {
+            try {
+                const [pendingTasksRes, schedulesRes] = await Promise.all([
+                    databases.listDocuments(
+                        DATABASE_ID,
+                        COLLECTIONS.TASKS,
+                        [
+                            Query.equal('user_id', user.$id),
+                            Query.equal('status', 'pending'),
+                            Query.limit(100)
+                        ]
+                    ),
+                    databases.listDocuments(
+                        DATABASE_ID,
+                        COLLECTIONS.SCHEDULES,
+                        [
+                            Query.equal('user_id', user.$id),
+                            Query.equal('day', today),
+                            Query.limit(100)
+                        ]
+                    )
+                ]);
+
+                const upcomingTasks = pendingTasksRes.documents.filter(task => {
+                    if (!task.due_date) return false;
+                    const due = new Date(task.due_date);
+                    return !Number.isNaN(due.getTime()) && due <= reminderCutoff;
+                });
+
+                if (upcomingTasks.length === 0 && schedulesRes.documents.length === 0) {
+                    continue;
+                }
+
+                const taskTitles = upcomingTasks.slice(0, 5).map(task => task.title).filter(Boolean);
+                const scheduleTexts = schedulesRes.documents.slice(0, 5).map(schedule => {
+                    const start = schedule.start_time ? ` at ${schedule.start_time}` : '';
+                    return `${schedule.title}${start}`;
+                }).filter(Boolean);
+
+                const messageParts = [
+                    taskTitles.length > 0 ? `Tasks due soon: ${taskTitles.join(', ')}.` : '',
+                    scheduleTexts.length > 0 ? `Study sessions today: ${scheduleTexts.join(', ')}.` : ''
+                ].filter(Boolean);
+
+                await createInAppNotification({
+                    userId: user.$id,
+                    title: 'Study reminders for today',
+                    message: messageParts.join(' '),
+                    link: upcomingTasks.length > 0 ? links.dashboard : links.courses,
+                    type: 'reminder',
+                    source: 'task_schedule'
+                });
+                notificationCount++;
+
+                if (!isEmailConfigured) {
+                    console.log(`In-app study reminder created for ${user.email}; email skipped.`);
+                    continue;
+                }
+
+                const htmlSections = [
+                    taskTitles.length > 0 ? `<p><b>Tasks due soon:</b> ${taskTitles.join(', ')}</p>` : '',
+                    scheduleTexts.length > 0 ? `<p><b>Study sessions today:</b> ${scheduleTexts.join(', ')}</p>` : ''
+                ].filter(Boolean).join('');
+
+                await transporter.sendMail({
+                    from: smtpFromAddress,
+                    to: user.email,
+                    subject: 'TutorBuddy Study Reminder',
+                    html: `
+                        <h2>Study Reminder</h2>
+                        <p>Hello ${user.name},</p>
+                        <p>You have study items to review today.</p>
+                        ${htmlSections}
+                        ${buildEmailCTA('Open Tasks', links.dashboard, 'Open Courses', links.courses)}
+                    `
+                });
+                successCount++;
+            } catch (error: any) {
+                failCount++;
+                console.error(`Study reminder error for ${user.email}:`, error.message);
+            }
+        }
+
+        if (res) {
+            res.status(200).json({
+                message: isEmailConfigured
+                    ? `Study reminders sent to ${successCount} users${failCount > 0 ? `, ${failCount} failed` : ''}.`
+                    : 'In-app study reminders created, but email delivery is disabled.',
+                successCount,
+                failCount,
+                notificationsCreated: notificationCount
+            });
+        }
+    } catch (error: any) {
+        console.error('Study reminder generation error:', error.message);
+        if (res) res.status(500).json({ error: error.message });
+    }
+};
+

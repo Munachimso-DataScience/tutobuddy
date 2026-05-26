@@ -2,6 +2,31 @@ import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
+const parseActivityDetails = (details: unknown) => {
+    if (typeof details === 'string') {
+        try {
+            return JSON.parse(details);
+        } catch {
+            return {};
+        }
+    }
+
+    if (details && typeof details === 'object') {
+        return details as Record<string, any>;
+    }
+
+    return {};
+};
+
+const normalizeContentLabel = (value: unknown) => {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    return trimmed;
+};
+
 export const logActivity = async (req: any, res: any) => {
     try {
         const { type, details } = req.body;
@@ -41,8 +66,10 @@ export const logActivity = async (req: any, res: any) => {
         });
 
         let finalStreak = 0;
+        let profileUpdatePayload: Record<string, any> | null = null;
         try {
             const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, userId);
+            const profileData = profile as any;
             const lastActiveStr = profile.last_active;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -71,9 +98,49 @@ export const logActivity = async (req: any, res: any) => {
             
             finalStreak = newStreak;
 
+            const activityDetails = parseActivityDetails(details);
+            const duration = Math.max(0, Number(activityDetails.duration) || 0);
+            if (type === 'study_session' && duration > 0) {
+                const previousStudyDate = profileData.last_study_session_at ? new Date(profileData.last_study_session_at) : null;
+                const isSameDay = previousStudyDate
+                    ? previousStudyDate.toISOString().slice(0, 10) === getTodayKey()
+                    : false;
+                const courseId = normalizeContentLabel(activityDetails.courseId || activityDetails.course_id);
+                let contentLabel = normalizeContentLabel(activityDetails.contentTitle || activityDetails.courseTitle || activityDetails.topic || courseId || 'Study session');
+
+                if (courseId) {
+                    try {
+                        const course = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSES, courseId);
+                        contentLabel = normalizeContentLabel(course.title || course.name || course.code || contentLabel);
+                    } catch {
+                        // fallback to provided label
+                    }
+                }
+
+                const currentTotal = Number(profileData.study_minutes_total) || 0;
+                const currentToday = Number(profileData.study_minutes_today) || 0;
+                const recentCovered = normalizeContentLabel(profileData.recent_content_covered);
+                const existingTopics = recentCovered
+                    ? recentCovered.split(',').map((topic: string) => topic.trim()).filter(Boolean)
+                    : [];
+                const updatedTopics = contentLabel && !existingTopics.includes(contentLabel)
+                    ? [...existingTopics, contentLabel]
+                    : existingTopics;
+
+                profileUpdatePayload = {
+                    study_minutes_total: currentTotal + duration,
+                    study_minutes_today: isSameDay ? currentToday + duration : duration,
+                    last_study_minutes: duration,
+                    recent_content_covered: updatedTopics.slice(-12).join(', '),
+                    last_study_summary: `Studied ${contentLabel} for ${duration} minute${duration === 1 ? '' : 's'}.`,
+                    last_study_session_at: new Date().toISOString()
+                };
+            }
+
             await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
                 last_active: new Date().toISOString(),
-                current_streak: finalStreak
+                current_streak: finalStreak,
+                ...(profileUpdatePayload || {})
             });
         } catch (profileError: any) {
             console.warn(`Non-critical profile error: ${profileError.message}`);
@@ -151,7 +218,13 @@ export const getStats = async (req: any, res: any) => {
             activityCount: logs.total,
             recentLogs: logs.documents,
             studyTime: studyTimeStr,
-            avgScore: `${avgScore}%`
+            avgScore: `${avgScore}%`,
+            studyMinutesTotal: Number((profile as any).study_minutes_total) || 0,
+            studyMinutesToday: Number((profile as any).study_minutes_today) || 0,
+            lastStudyMinutes: Number((profile as any).last_study_minutes) || 0,
+            recentContentCovered: (profile as any).recent_content_covered || '',
+            lastStudySummary: (profile as any).last_study_summary || '',
+            weeklyWeaknesses: (profile as any).weekly_weaknesses || ''
         });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

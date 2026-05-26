@@ -12,7 +12,7 @@ import { generateQuiz, getQuizzes, updateQuizScore } from './controllers/quizCon
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
 import { evaluateOcr } from './controllers/ocrController';
 import { getExplanation, getHint } from './controllers/feedbackController';
-import { checkInactivity, generateWeeklyReports, getNotifications, getSmtpStatus, markNotificationRead, sendTestEmail } from './controllers/notificationController';
+import { checkInactivity, generateWeeklyReports, getNotifications, getSmtpStatus, markNotificationRead, sendDailyStudySummaries, sendStudySessionReminders, sendTestEmail } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
 import { getLeaderboard } from './controllers/leaderboardController';
 import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
@@ -96,6 +96,8 @@ app.get('/api/notifications/smtp-status', getSmtpStatus);
 app.post('/api/notifications/test-email', authMiddleware, sendTestEmail);
 app.post('/api/notifications/check-inactivity', authMiddleware, checkInactivity);
 app.post('/api/notifications/weekly-report', authMiddleware, generateWeeklyReports);
+app.post('/api/notifications/daily-summary', authMiddleware, sendDailyStudySummaries);
+app.post('/api/notifications/study-reminders', authMiddleware, sendStudySessionReminders);
 
 // Analytics Routes
 app.get('/api/analytics/weakness', authMiddleware, getWeaknessAnalysis);

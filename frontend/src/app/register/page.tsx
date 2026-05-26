@@ -45,15 +45,22 @@ export default function RegisterPage() {
                 process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
                 process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_USERS!,
                 userAccount.$id,
-                {
-                    user_id: userAccount.$id,
-                    full_name: fullName,
-                    school: school,
-                    course_of_study: course,
-                    current_streak: 0,
-                    last_active: new Date().toISOString()
-                }
-            );
+                    {
+                        user_id: userAccount.$id,
+                        full_name: fullName,
+                        school: school,
+                        course_of_study: course,
+                        current_streak: 0,
+                        last_active: new Date().toISOString(),
+                        study_minutes_total: 0,
+                        study_minutes_today: 0,
+                        last_study_minutes: 0,
+                        recent_content_covered: '',
+                        last_study_summary: '',
+                        weekly_weaknesses: '',
+                        last_study_session_at: new Date().toISOString()
+                    }
+                );
 
             toast.success('Account created successfully!');
             router.push('/dashboard');

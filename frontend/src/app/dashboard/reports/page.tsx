@@ -6,7 +6,6 @@ import { account } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import axios from 'axios';
 import { 
-    BarChart3, 
     Calendar, 
     ChevronLeft, 
     Download, 
@@ -20,10 +19,21 @@ import Link from 'next/link';
 import StudyActivityChart from '@/components/dashboard/StudyActivityChart';
 import ReadinessChart from '@/components/dashboard/ReadinessChart';
 
+type ReportStats = {
+    streak?: number;
+    activityCount?: number;
+    recentLogs?: unknown[];
+    studyTime?: string;
+    avgScore?: string;
+    studyMinutesToday?: number;
+    recentContentCovered?: string;
+    weeklyWeaknesses?: string;
+};
+
 export default function ReportsPage() {
     const { user } = useAuth();
-    const [stats, setStats] = useState<any>(null);
-    const [courses, setCourses] = useState<any[]>([]);
+    const [stats, setStats] = useState<ReportStats | null>(null);
+    const [courses, setCourses] = useState<Array<{ $id: string; name?: string; exam_readiness?: number }>>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -156,7 +166,7 @@ export default function ReportsPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-gray-900 dark:text-white">Active Streak</p>
-                                    <p className="text-[10px] text-gray-500 font-medium">You've studied for {stats?.streak || 0} days in a row.</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">You&apos;ve studied for {stats?.streak || 0} days in a row.</p>
                                 </div>
                             </div>
                             <div className="flex items-start space-x-3">
@@ -166,6 +176,33 @@ export default function ReportsPage() {
                                 <div>
                                     <p className="text-xs font-bold text-gray-900 dark:text-white">Materials Processed</p>
                                     <p className="text-[10px] text-gray-500 font-medium">{stats?.activityCount || 0} AI-powered study sessions logged.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 rounded-lg">
+                                    <Clock className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">Study Minutes Today</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">{stats?.studyMinutesToday || 0} minutes tracked in your profile.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 text-orange-600 rounded-lg">
+                                    <FileText className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">Recent Content Covered</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">{stats?.recentContentCovered || 'No recent content tracked yet.'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                                <div className="p-2 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-lg">
+                                    <PieChart className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">Weekly Weakness Notes</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">{stats?.weeklyWeaknesses || 'Your next quizzes will reveal more weakness patterns.'}</p>
                                 </div>
                             </div>
                         </div>
