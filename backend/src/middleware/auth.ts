@@ -1,4 +1,5 @@
-import { Client, Account } from 'node-appwrite';
+import { Client, Account, Databases } from 'node-appwrite';
+import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 
 export const authMiddleware = async (req: any, res: any, next: any) => {
     try {
@@ -22,10 +23,19 @@ export const authMiddleware = async (req: any, res: any, next: any) => {
         }
 
         const account = new Account(client);
+        const databases = new Databases(client);
         console.log('Calling account.get()...');
         const user = await account.get();
         console.log('Auth success for:', user.email);
         req.user = user;
+        try {
+            const profile = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, user.$id);
+            req.profile = profile;
+            req.userRole = profile.role || 'student';
+        } catch {
+            req.profile = null;
+            req.userRole = 'student';
+        }
         next();
     } catch (error: any) {
         console.error('Auth Middleware Error:', error.message);

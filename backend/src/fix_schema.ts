@@ -21,14 +21,16 @@ const schema = [
             { key: 'full_name', type: 'string', size: 255, required: false },
             { key: 'school', type: 'string', size: 255, required: false },
             { key: 'course_of_study', type: 'string', size: 255, required: false },
+            { key: 'role', type: 'string', size: 50, required: false, default: 'student' },
+            { key: 'department', type: 'string', size: 255, required: false, default: '' },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'assigned_courses', type: 'string', size: 5000, required: false, default: '' },
             { key: 'current_streak', type: 'integer', required: false, default: 0 },
             { key: 'last_active', type: 'datetime', required: false },
             { key: 'study_minutes_total', type: 'integer', required: false, default: 0 },
             { key: 'study_minutes_today', type: 'integer', required: false, default: 0 },
             { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
             { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
-            { key: 'last_study_summary', type: 'string', size: 5000, required: false, default: '' },
-            { key: 'weekly_weaknesses', type: 'string', size: 5000, required: false, default: '' },
             { key: 'last_study_session_at', type: 'datetime', required: false }
         ]
     },
@@ -90,6 +92,20 @@ const schema = [
         ]
     },
     {
+        id: COLLECTIONS.STUDY_SNAPSHOTS,
+        name: 'Study Snapshots',
+        attributes: [
+            { key: 'user_id', type: 'string', size: 255, required: false },
+            { key: 'summary_text', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'weekly_weaknesses', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'total_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'study_sessions', type: 'integer', required: false, default: 0 },
+            { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'created_at', type: 'datetime', required: false }
+        ]
+    },
+    {
         id: COLLECTIONS.NOTIFICATIONS,
         name: 'Notifications',
         attributes: [
@@ -124,12 +140,47 @@ const schema = [
             { key: 'start_time', type: 'string', size: 20, required: false },
             { key: 'end_time', type: 'string', size: 20, required: false }
         ]
+    },
+    {
+        id: COLLECTIONS.QUESTION_TEMPLATES,
+        name: 'Question Templates',
+        attributes: [
+            { key: 'name', type: 'string', size: 255, required: false },
+            { key: 'difficulty', type: 'string', size: 50, required: false, default: 'medium' },
+            { key: 'prompt_text', type: 'string', size: 65000, required: false, default: '' },
+            { key: 'essay_prompt_style', type: 'string', size: 255, required: false, default: '' },
+            { key: 'explanation_style', type: 'string', size: 255, required: false, default: '' },
+            { key: 'is_active', type: 'boolean', required: false, default: true }
+        ]
+    },
+    {
+        id: COLLECTIONS.SYSTEM_METRICS,
+        name: 'System Metrics',
+        attributes: [
+            { key: 'timestamp', type: 'datetime', required: false },
+            { key: 'total_ai_requests', type: 'integer', required: false, default: 0 },
+            { key: 'quiz_generation_success_rate', type: 'double', required: false, default: 0.0 },
+            { key: 'notification_sends', type: 'integer', required: false, default: 0 },
+            { key: 'daily_active_users', type: 'integer', required: false, default: 0 },
+            { key: 'avg_response_time', type: 'double', required: false, default: 0.0 }
+        ]
+    },
+    {
+        id: COLLECTIONS.CLASS_GROUPS,
+        name: 'Class Groups',
+        attributes: [
+            { key: 'name', type: 'string', size: 255, required: false },
+            { key: 'department', type: 'string', size: 255, required: false },
+            { key: 'lecturer_id', type: 'string', size: 255, required: false },
+            { key: 'course_list', type: 'string', size: 5000, required: false, default: '[]' },
+            { key: 'student_list', type: 'string', size: 5000, required: false, default: '[]' }
+        ]
     }
 ];
 
 async function fixSchema() {
     console.log('--- Starting Schema Fix ---');
-    
+
     // Ensure Database exists
     try {
         await databases.get(DATABASE_ID);
@@ -157,7 +208,7 @@ async function fixSchema() {
 
         for (const attr of col.attributes) {
             const existing = existingAttrMap[attr.key];
-            
+
             if (existing) {
                 // Check if we need to update size
                 if (attr.type === 'string' && attr.size && existing.size < attr.size) {
@@ -188,7 +239,7 @@ async function fixSchema() {
                 } else if (attr.type === 'boolean') {
                     await databases.createBooleanAttribute(DATABASE_ID, col.id, attr.key, attr.required, attr.default as any, false);
                 }
-                
+
                 // Wait a bit for Appwrite to process
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (err: any) {

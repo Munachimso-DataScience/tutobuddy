@@ -33,9 +33,18 @@ async function setup() {
                     { key: 'user_id', type: 'string', size: 255, required: true },
                     { key: 'full_name', type: 'string', size: 255, required: true },
                     { key: 'school', type: 'string', size: 255, required: true },
-                    { key: 'course_of_study', type: 'string', size: 255, required: true },
+                    { key: 'course_of_study', type: 'string', size: 255, required: false },
+                    { key: 'role', type: 'string', size: 50, required: false, default: 'student' },
+                    { key: 'department', type: 'string', size: 255, required: false },
+                    { key: 'class_group', type: 'string', size: 255, required: false },
+                    { key: 'assigned_courses', type: 'string', size: 5000, required: false },
                     { key: 'current_streak', type: 'integer', required: true, default: 0 },
-                    { key: 'last_active', type: 'datetime', required: true }
+                    { key: 'last_active', type: 'datetime', required: true },
+                    { key: 'study_minutes_total', type: 'integer', required: false, default: 0 },
+                    { key: 'study_minutes_today', type: 'integer', required: false, default: 0 },
+                    { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+                    { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'last_study_session_at', type: 'datetime', required: false }
                 ]
             },
             {
@@ -78,6 +87,20 @@ async function setup() {
                     { key: 'type', type: 'string', size: 50, required: true },
                     { key: 'description', type: 'string', size: 1000, required: true },
                     { key: 'timestamp', type: 'datetime', required: true }
+                ]
+            },
+            {
+                id: 'study_snapshots',
+                name: 'Study Snapshots',
+                attributes: [
+                    { key: 'user_id', type: 'string', size: 255, required: true },
+                    { key: 'summary_text', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'weekly_weaknesses', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'total_minutes', type: 'integer', required: false, default: 0 },
+                    { key: 'study_sessions', type: 'integer', required: false, default: 0 },
+                    { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+                    { key: 'created_at', type: 'datetime', required: true }
                 ]
             }
         ];

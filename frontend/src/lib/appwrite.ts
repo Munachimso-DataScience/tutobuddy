@@ -38,3 +38,8 @@ export const getCachedJWT = async (): Promise<string> => {
         return cachedJWT;
     }
 };
+
+export const clearCachedJWT = () => {
+    cachedJWT = null;
+    tokenExpiryTime = 0;
+};

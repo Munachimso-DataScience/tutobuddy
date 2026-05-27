@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
+import { requireRoles } from './middleware/roles';
 import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
 import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
@@ -18,6 +19,9 @@ import { getLeaderboard } from './controllers/leaderboardController';
 import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
 import { getSchedules, createSchedule, deleteSchedule } from './controllers/scheduleController';
 import { initScheduler } from './utils/scheduler';
+import { getCurrentUser } from './controllers/authController';
+import { getAdminSummary } from './controllers/adminController';
+import { getLecturerSummary } from './controllers/lecturerController';
 import multer from 'multer';
 
 const app = express();
@@ -39,8 +43,8 @@ import { DATABASE_ID } from './lib/collections';
 app.get('/health', async (req, res) => {
     try {
         await databases.get(DATABASE_ID);
-        res.status(200).json({ 
-            status: 'OK', 
+        res.status(200).json({
+            status: 'OK',
             database: 'Connected',
             time: new Date().toISOString(),
             env: {
@@ -50,14 +54,23 @@ app.get('/health', async (req, res) => {
             }
         });
     } catch (e: any) {
-        res.status(500).json({ 
-            status: 'ERROR', 
+        res.status(500).json({
+            status: 'ERROR',
             database: 'Failed to connect',
             error: e.message,
             hint: 'Check APPWRITE_API_KEY and APPWRITE_PROJECT_ID'
         });
     }
 });
+
+// Auth / Profile Routes
+app.get('/api/auth/me', authMiddleware, getCurrentUser);
+
+// Admin Routes
+app.get('/api/admin/summary', authMiddleware, requireRoles('admin'), getAdminSummary);
+
+// Lecturer Routes
+app.get('/api/lecturer/summary', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerSummary);
 
 // Protected Course Routes
 app.post('/api/courses', authMiddleware, upload.single('file'), createCourse);

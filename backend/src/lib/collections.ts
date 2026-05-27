@@ -8,8 +8,12 @@ export const COLLECTIONS: {
     QUIZZES: string;
     ACTIVITY: string;
     NOTIFICATIONS: string;
+    STUDY_SNAPSHOTS: string;
     TASKS: string;
     SCHEDULES: string;
+    QUESTION_TEMPLATES: string;
+    SYSTEM_METRICS: string;
+    CLASS_GROUPS: string;
 } = {
     USERS: 'users_profiles',
     COURSES: 'courses',
@@ -17,6 +21,10 @@ export const COLLECTIONS: {
     QUIZZES: 'quizzes',
     ACTIVITY: 'activity_logs',
     NOTIFICATIONS: 'notifications',
+    STUDY_SNAPSHOTS: 'study_snapshots',
     TASKS: 'tasks',
-    SCHEDULES: 'schedules'
+    SCHEDULES: 'schedules',
+    QUESTION_TEMPLATES: 'question_templates',
+    SYSTEM_METRICS: 'system_metrics',
+    CLASS_GROUPS: 'class_groups'
 };

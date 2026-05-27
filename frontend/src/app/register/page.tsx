@@ -15,6 +15,7 @@ export default function RegisterPage() {
     const [fullName, setFullName] = useState('');
     const [school, setSchool] = useState('');
     const [course, setCourse] = useState('');
+    const [role, setRole] = useState<'student' | 'lecturer'>('student');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
 
@@ -29,13 +30,16 @@ export default function RegisterPage() {
             try {
                 await account.createEmailPasswordSession(email, password);
                 console.log('Register: Session created');
-            } catch (error: any) {
-                if (error.code === 409 || error.type === 'user_session_already_exists') {
+            } catch (error: unknown) {
+                const authError = error as { code?: number; type?: string; message?: string };
+                if (authError.code === 409 || authError.type === 'user_session_already_exists') {
                     console.log('Register: Session already exists, clearing...');
-                    try { await account.deleteSession('current'); } catch (e) {}
+                    try { await account.deleteSession('current'); } catch {
+                        // ignore session cleanup errors
+                    }
                     await account.createEmailPasswordSession(email, password);
                 } else {
-                    console.error('Register: Session creation failed', error);
+                    console.error('Register: Session creation failed', authError);
                     throw error;
                 }
             }
@@ -49,29 +53,32 @@ export default function RegisterPage() {
                         user_id: userAccount.$id,
                         full_name: fullName,
                         school: school,
-                        course_of_study: course,
+                        course_of_study: course.trim(),
+                        role,
+                        department: '',
+                        class_group: '',
+                        assigned_courses: '',
                         current_streak: 0,
                         last_active: new Date().toISOString(),
                         study_minutes_total: 0,
                         study_minutes_today: 0,
                         last_study_minutes: 0,
                         recent_content_covered: '',
-                        last_study_summary: '',
-                        weekly_weaknesses: '',
                         last_study_session_at: new Date().toISOString()
                     }
                 );
 
             toast.success('Account created successfully!');
-            router.push('/dashboard');
-        } catch (error: any) {
-            console.error('Registration Error:', error);
-            if (error?.code === 409) {
+            router.push(role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
+        } catch (error: unknown) {
+            const registrationError = error as { code?: number; message?: string };
+            console.error('Registration Error:', registrationError);
+            if (registrationError?.code === 409) {
                 toast.error('An account with this email already exists. Please login instead.');
-            } else if (error?.code === 400) {
+            } else if (registrationError?.code === 400) {
                 toast.error('Invalid registration data. Please check your inputs.');
             } else {
-                toast.error(error.message || 'Registration failed. Please check your connection.');
+                toast.error(registrationError?.message || 'Registration failed. Please check your connection.');
             }
         } finally {
             setIsSubmitting(false);
@@ -102,6 +109,17 @@ export default function RegisterPage() {
                 </div>
 
                 <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                    <div className="relative">
+                        <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value as 'student' | 'lecturer')}
+                            className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        >
+                            <option value="student">Student</option>
+                            <option value="lecturer">Lecturer</option>
+                        </select>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -140,11 +158,10 @@ export default function RegisterPage() {
                             <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                             <input
                                 type="text"
-                                required
                                 value={course}
                                 onChange={(e) => setCourse(e.target.value)}
                                 className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                placeholder="Course of Study"
+                                placeholder="Course of Study (optional)"
                             />
                         </div>
                     </div>

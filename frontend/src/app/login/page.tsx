@@ -20,11 +20,12 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      const role = await login(email, password);
       toast.success('Welcome back!');
-      router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error?.message || 'Login failed');
+      router.push(role === 'admin' ? '/dashboard/admin' : role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
+    } catch (error: unknown) {
+      const authError = error as { message?: string };
+      toast.error(authError?.message || 'Login failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +99,7 @@ export default function LoginPage() {
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
                 Start learning for free
               </a>

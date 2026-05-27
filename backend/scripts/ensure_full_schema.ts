@@ -34,9 +34,18 @@ const collections: Collection[] = [
             { key: 'user_id', type: 'string', size: 255, required: true },
             { key: 'full_name', type: 'string', size: 255, required: true },
             { key: 'school', type: 'string', size: 255, required: true },
-            { key: 'course_of_study', type: 'string', size: 255, required: true },
+            { key: 'course_of_study', type: 'string', size: 255, required: false },
+            { key: 'role', type: 'string', size: 50, required: false, default: 'student' },
+            { key: 'department', type: 'string', size: 255, required: false, default: '' },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'assigned_courses', type: 'string', size: 5000, required: false, default: '' },
             { key: 'current_streak', type: 'integer', required: false, default: 0 },
-            { key: 'last_active', type: 'string', size: 50, required: false } // Use string for ISO dates if datetime is picky
+            { key: 'last_active', type: 'string', size: 50, required: false }, // Use string for ISO dates if datetime is picky
+            { key: 'study_minutes_total', type: 'integer', required: false, default: 0 },
+            { key: 'study_minutes_today', type: 'integer', required: false, default: 0 },
+            { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'last_study_session_at', type: 'string', size: 50, required: false }
         ]
     },
     {
@@ -88,6 +97,20 @@ const collections: Collection[] = [
             { key: 'type', type: 'string', size: 50, required: true },
             { key: 'description', type: 'string', size: 2000, required: true },
             { key: 'timestamp', type: 'string', size: 50, required: false }
+        ]
+    },
+    {
+        id: 'study_snapshots',
+        name: 'Study Snapshots',
+        attributes: [
+            { key: 'user_id', type: 'string', size: 255, required: true },
+            { key: 'summary_text', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'recent_content_covered', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'weekly_weaknesses', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'total_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'study_sessions', type: 'integer', required: false, default: 0 },
+            { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
+            { key: 'created_at', type: 'string', size: 50, required: false }
         ]
     },
     {

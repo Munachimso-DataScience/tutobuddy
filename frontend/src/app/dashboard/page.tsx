@@ -21,7 +21,30 @@ import ReadinessChart from '@/components/dashboard/ReadinessChart';
 import StudyActivityChart from '@/components/dashboard/StudyActivityChart';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 
-const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
+type DashboardStats = {
+    streak?: number;
+    studyTime?: string;
+    avgScore?: string;
+    recentLogs?: Array<Record<string, unknown>>;
+};
+
+type DashboardCourse = {
+    exam_date?: string;
+    title?: string;
+    code?: string;
+    progress?: number;
+    exam_readiness?: number;
+};
+
+type StatCardProps = {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: string;
+    trend?: string;
+    color: string;
+};
+
+const StatCard = ({ icon: Icon, label, value, trend, color }: StatCardProps) => (
     <div className="bg-surface/90 dark:bg-surface-2/90 p-6 rounded-2xl shadow-sm border border-primary/10 dark:border-primary/20">
         <div className="flex items-start justify-between">
             <div className={`p-3 rounded-xl ${color}`}>
@@ -42,19 +65,20 @@ const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
 );
 
 export default function DashboardPage() {
-    const { user } = useAuth();
-    const [stats, setStats] = useState<any>(null);
-    const [courses, setCourses] = useState<any[]>([]);
+    const { user, loading: authLoading } = useAuth();
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [courses, setCourses] = useState<DashboardCourse[]>([]);
     const [courseCount, setCourseCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const streak = stats?.streak || 0;
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
                 const jwt = await getCachedJWT();
                 
-                // Fetch stats and courses in parallel
-                const [statsRes, coursesRes] = await Promise.all([
+                // Fetch stats and courses in parallel, but don't fail the whole page
+                const [statsRes, coursesRes] = await Promise.allSettled([
                     axios.get(`${API_URL}/api/activity/stats`, {
                         headers: { Authorization: `Bearer ${jwt}` }
                     }),
@@ -63,22 +87,37 @@ export default function DashboardPage() {
                     })
                 ]);
 
-                setStats(statsRes.data);
-                setCourses(coursesRes.data);
-                setCourseCount(coursesRes.data.length);
+                if (statsRes.status === 'fulfilled') {
+                    setStats(statsRes.value.data);
+                } else {
+                    console.warn('Activity stats request failed:', statsRes.reason);
+                    setStats(null);
+                }
+
+                if (coursesRes.status === 'fulfilled') {
+                    setCourses(coursesRes.value.data || []);
+                    setCourseCount((coursesRes.value.data || []).length);
+                } else {
+                    console.warn('Courses request failed:', coursesRes.reason);
+                    setCourses([]);
+                    setCourseCount(0);
+                }
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
+                setStats(null);
+                setCourses([]);
+                setCourseCount(0);
             } finally {
                 setLoading(false);
             }
         };
 
-        if (user) {
+        if (!authLoading && user) {
             fetchDashboardData();
         }
-    }, [user]);
+    }, [user, authLoading]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
                 <Loader2 className="h-10 w-10 text-secondary animate-spin" />
@@ -94,8 +133,8 @@ export default function DashboardPage() {
                         Welcome, {user?.name?.split(' ')[0] || 'Scholar'}! 👋
                     </h1>
                     <p className="text-sm md:text-base text-foreground/60 dark:text-cream/60 mt-1 font-medium">
-                        {stats?.streak > 0 
-                            ? `On a ${stats.streak}-day study streak!`
+                        {streak > 0
+                            ? `On a ${streak}-day study streak!`
                             : "Start your study journey today!"}
                     </p>
                 </div>
@@ -124,8 +163,8 @@ export default function DashboardPage() {
                 <StatCard
                     icon={Trophy}
                     label="Streak"
-                    value={`${stats?.streak || 0} Days`}
-                    trend={stats?.streak > 0 ? "+1" : undefined}
+                    value={`${streak} Days`}
+                    trend={streak > 0 ? "+1" : undefined}
                 color="bg-secondary"
                 />
                 <StatCard
@@ -246,8 +285,9 @@ export default function DashboardPage() {
                     <h3 className="text-xl font-bold text-foreground dark:text-cream">Courses & Exam Readiness</h3>
                 </div>
                 <div className="space-y-6">
-                    {courses.map((course: any, idx: number) => {
-                        const daysToExam = course.exam_date ? Math.ceil((new Date(course.exam_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
+                    {courses.map((course: DashboardCourse, idx: number) => {
+                        const examDate = course.exam_date ? new Date(course.exam_date) : null;
+                        const daysToExam = examDate ? Math.ceil((examDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
                         return (
                         <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl">
                             <style>{`
@@ -258,7 +298,7 @@ export default function DashboardPage() {
                                 <div>
                                     <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.title} ({course.code})</h4>
                                     {daysToExam !== null && daysToExam > 0 ? (
-                                        <p className="text-xs font-semibold text-secondary mt-1">{daysToExam} days until final exam ({new Date(course.exam_date).toLocaleDateString()})</p>
+                                        <p className="text-xs font-semibold text-secondary mt-1">{daysToExam} days until final exam ({examDate?.toLocaleDateString()})</p>
                                     ) : daysToExam !== null && daysToExam <= 0 ? (
                                         <p className="text-xs font-semibold text-red-500 mt-1">Exam Date Passed</p>
                                     ) : (

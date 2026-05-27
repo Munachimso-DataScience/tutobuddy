@@ -52,15 +52,16 @@ function ResetPasswordContent() {
     setIsSubmitting(true);
     try {
       // Use Appwrite's updateRecovery to reset the password
-      await account.updateRecovery(userId, secret, password);
+      await account.updateRecovery(userId!, secret!, password);
 
       toast.success('Password reset successfully! Please log in with your new password.');
       router.push('/login');
-    } catch (err: any) {
-      console.error('Password reset error:', err);
-      toast.error(err?.message || 'Failed to reset password. The link may have expired.');
+    } catch (err: unknown) {
+      const authError = err as { message?: string; code?: number; type?: string };
+      console.error('Password reset error:', authError);
+      toast.error(authError?.message || 'Failed to reset password. The link may have expired.');
       // If the token is invalid, redirect to forgot password
-      if (err?.code === 401 || err?.type === 'user_recovery_token_invalid') {
+      if (authError?.code === 401 || authError?.type === 'user_recovery_token_invalid') {
         router.push('/forgot-password');
       }
     } finally {

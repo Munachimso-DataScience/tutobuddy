@@ -1,6 +1,7 @@
 import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
 import { databases } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
+import { saveStudySnapshot, getLatestStudySnapshot } from '../lib/studySnapshots';
 
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
@@ -132,9 +133,17 @@ export const logActivity = async (req: any, res: any) => {
                     study_minutes_today: isSameDay ? currentToday + duration : duration,
                     last_study_minutes: duration,
                     recent_content_covered: updatedTopics.slice(-12).join(', '),
-                    last_study_summary: `Studied ${contentLabel} for ${duration} minute${duration === 1 ? '' : 's'}.`,
                     last_study_session_at: new Date().toISOString()
                 };
+
+                await saveStudySnapshot({
+                    userId,
+                    summaryText: `Studied ${contentLabel} for ${duration} minute${duration === 1 ? '' : 's'}.`,
+                    recentContentCovered: updatedTopics.slice(-12).join(', '),
+                    totalMinutes: currentTotal + duration,
+                    studySessions: 1,
+                    lastStudyMinutes: duration
+                });
             }
 
             await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
@@ -168,6 +177,7 @@ export const getStats = async (req: any, res: any) => {
                 last_active: new Date().toISOString()
             };
         }
+        const latestSnapshot = await getLatestStudySnapshot(userId);
 
         const lastWeek = new Date();
         lastWeek.setDate(lastWeek.getDate() - 7);
@@ -222,9 +232,9 @@ export const getStats = async (req: any, res: any) => {
             studyMinutesTotal: Number((profile as any).study_minutes_total) || 0,
             studyMinutesToday: Number((profile as any).study_minutes_today) || 0,
             lastStudyMinutes: Number((profile as any).last_study_minutes) || 0,
-            recentContentCovered: (profile as any).recent_content_covered || '',
-            lastStudySummary: (profile as any).last_study_summary || '',
-            weeklyWeaknesses: (profile as any).weekly_weaknesses || ''
+            recentContentCovered: (profile as any).recent_content_covered || latestSnapshot?.recent_content_covered || '',
+            lastStudySummary: latestSnapshot?.summary_text || '',
+            weeklyWeaknesses: latestSnapshot?.weekly_weaknesses || ''
         });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

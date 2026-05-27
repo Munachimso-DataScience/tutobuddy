@@ -4,6 +4,7 @@ import axios from 'axios';
 import { users, databases } from '../lib/appwrite-admin';
 import { ID, Query } from 'node-appwrite';
 import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
+import { saveStudySnapshot } from '../lib/studySnapshots';
 
 // Validate email configuration
 const validateEmailConfig = () => {
@@ -274,9 +275,15 @@ const updateStudyProfileSnapshot = async (userId: string, summary: StudySummary,
     try {
         await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, userId, {
             recent_content_covered: summary.contentCovered.join(', '),
-            last_study_summary: summary.summaryText,
-            weekly_weaknesses: weaknesses.join(', '),
             last_study_session_at: new Date().toISOString()
+        });
+        await saveStudySnapshot({
+            userId,
+            summaryText: summary.summaryText,
+            recentContentCovered: summary.contentCovered.join(', '),
+            weeklyWeaknesses: weaknesses.join(', '),
+            totalMinutes: summary.totalMinutes,
+            studySessions: summary.studySessions
         });
     } catch (error: any) {
         console.warn(`Failed to update study snapshot for ${userId}:`, error.message);

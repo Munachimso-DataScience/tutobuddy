@@ -38,14 +38,16 @@ async function fixProfiles() {
                             full_name: user.name || 'Student',
                             school: 'General',
                             course_of_study: 'General',
+                            role: 'student',
+                            department: '',
+                            class_group: '',
+                            assigned_courses: '',
                             current_streak: 0,
                             last_active: new Date().toISOString(),
                             study_minutes_total: 0,
                             study_minutes_today: 0,
                             last_study_minutes: 0,
                             recent_content_covered: '',
-                            last_study_summary: '',
-                            weekly_weaknesses: '',
                             last_study_session_at: new Date().toISOString()
                         }
                     );

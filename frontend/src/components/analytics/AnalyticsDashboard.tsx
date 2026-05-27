@@ -37,6 +37,7 @@ export default function AnalyticsDashboard() {
     const recommendationText = Array.isArray(analysis?.recommendations)
         ? analysis?.recommendations.join(' ')
         : analysis?.recommendations;
+    const weaknessCount = analysis?.weaknesses?.length || 0;
 
     if (loading) return null;
 
@@ -57,7 +58,7 @@ export default function AnalyticsDashboard() {
                 <div className="space-y-4">
                     {error ? (
                         <p className="text-gray-500 text-sm font-medium">{error}</p>
-                    ) : analysis?.weaknesses?.length > 0 ? (
+                    ) : weaknessCount > 0 && analysis?.weaknesses ? (
                         analysis.weaknesses.map((w: string, i: number) => (
                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
                                 <span className="font-semibold capitalize text-gray-700 dark:text-gray-300">{w}</span>

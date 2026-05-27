@@ -56,7 +56,7 @@ const SidebarItem = ({ icon: Icon, label, href, active = false, onClick }: { ico
 import { usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, logout } = useAuth();
+    const { user, logout, role } = useAuth();
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [showNotifications, setShowNotifications] = React.useState(false);
@@ -71,6 +71,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
         { icon: History, label: "Tasks", href: "/dashboard/tasks" },
         { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
+        ...(role === 'lecturer' || role === 'admin'
+            ? [{ icon: BarChart3, label: 'Lecturer View', href: '/dashboard/lecturer' }]
+            : []),
+        ...(role === 'admin'
+            ? [{ icon: BarChart3, label: 'Admin View', href: '/dashboard/admin' }]
+            : []),
     ];
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -253,6 +259,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         <button
                                             type="button"
                                             onClick={() => setShowNotifications(false)}
+                                            aria-label="Close notifications"
+                                            title="Close notifications"
                                             className="text-foreground/40 hover:text-foreground dark:text-cream/40 dark:hover:text-cream"
                                         >
                                             <X className="h-4 w-4" />
@@ -303,7 +311,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {user?.name || 'Student'}
                                     </p>
                                     <p className="text-xs text-foreground/50 font-medium capitalize">
-                                        Free Tier
+                                        {role}
                                     </p>
                                 </div>
                                 <div className="h-8 w-8 bg-secondary/15 rounded-full flex items-center justify-center">
