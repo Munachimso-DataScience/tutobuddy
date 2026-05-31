@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ override: true });
 
 import { setDefaultResultOrder } from 'node:dns';
 setDefaultResultOrder('ipv4first');

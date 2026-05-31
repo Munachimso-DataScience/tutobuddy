@@ -1,6 +1,6 @@
 import { Client, Databases, Storage, Users } from 'node-appwrite';
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ override: true });
 
 const client = new Client();
 
