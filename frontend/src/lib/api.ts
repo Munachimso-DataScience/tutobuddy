@@ -11,12 +11,90 @@ export const getAdminSummary = async (jwt?: string) => {
     return res.json();
 };
 
-export const getLecturerSummary = async (jwt?: string) => {
-    const res = await fetch(`${API_URL}/api/lecturer/summary`, {
+export const getLecturerSummary = async (
+    jwt?: string,
+    params?: { range?: string; classGroup?: string; courseId?: string }
+) => {
+    const searchParams = new URLSearchParams();
+    if (params?.range) searchParams.set('range', params.range);
+    if (params?.classGroup) searchParams.set('classGroup', params.classGroup);
+    if (params?.courseId) searchParams.set('courseId', params.courseId);
+
+    const queryString = searchParams.toString();
+    const res = await fetch(`${API_URL}/api/lecturer/summary${queryString ? `?${queryString}` : ''}`, {
         headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
     });
     if (!res.ok) {
         throw new Error('Failed to fetch lecturer summary');
+    }
+    return res.json();
+};
+
+export const getLecturerCourseOfferings = async (jwt?: string) => {
+    const res = await fetch(`${API_URL}/api/lecturer/course-offerings`, {
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch lecturer course offerings');
+    }
+    return res.json();
+};
+
+export const createLecturerCourseOffering = async (
+    jwt: string | undefined,
+    payload: {
+        title: string;
+        code?: string;
+        description?: string;
+        department?: string;
+        class_group?: string;
+        term?: string;
+        status?: string;
+        auto_enroll?: boolean;
+    }
+) => {
+    const res = await fetch(`${API_URL}/api/lecturer/course-offerings`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(jwt ? { Authorization: `Bearer ${jwt}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        throw new Error('Failed to create lecturer course offering');
+    }
+
+    return res.json();
+};
+
+export const sendLecturerReminder = async (
+    jwt: string | undefined,
+    payload: { classGroup?: string; topic?: string; message?: string }
+) => {
+    const res = await fetch(`${API_URL}/api/lecturer/reminders`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(jwt ? { Authorization: `Bearer ${jwt}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        throw new Error('Failed to send lecturer reminder');
+    }
+
+    return res.json();
+};
+
+export const getLecturerStudentHistory = async (jwt: string | undefined, studentId: string) => {
+    const res = await fetch(`${API_URL}/api/lecturer/students/${studentId}/history`, {
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch student history');
     }
     return res.json();
 };

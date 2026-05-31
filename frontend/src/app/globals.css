@@ -2,17 +2,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f7f0e4;
-  --foreground: #08110c;
-  --surface: #fffaf1;
-  --surface-2: #f1e3cc;
-  --muted: #d9b98f;
-  --primary: #0b4d2e;
-  --secondary: #f15a24;
-  --accent: #c7542d;
-  --denim: #4f79a7;
-  --ink: #08110c;
-  --cream: #fff8ed;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --muted: #94a3b8;
+  --primary: #2563eb;
+  --secondary: #3b82f6;
+  --accent: #60a5fa;
+  --denim: #1e3a8a;
+  --ink: #020617;
+  --cream: #f8fafc;
 }
 
 @theme inline {
@@ -131,25 +131,25 @@
 }
 
 .dark {
-  --background: #06110b;
-  --foreground: #f8f4eb;
-  --surface: #0d1a13;
-  --surface-2: #13251b;
-  --muted: #d7b387;
-  --primary: #1a6a41;
-  --secondary: #ff6b2d;
-  --accent: #e36b45;
-  --denim: #6e8fb7;
-  --ink: #f8f4eb;
-  --cream: #f6eddc;
+  --background: #020617;
+  --foreground: #f8fafc;
+  --surface: #0f172a;
+  --surface-2: #1e293b;
+  --muted: #475569;
+  --primary: #3b82f6;
+  --secondary: #60a5fa;
+  --accent: #93c5fd;
+  --denim: #bfdbfe;
+  --ink: #f8fafc;
+  --cream: #f1f5f9;
 }
 
 body {
   background:
-    radial-gradient(circle at 16% 18%, rgba(255, 236, 205, 0.12), transparent 20%),
-    radial-gradient(circle at 84% 18%, rgba(255, 111, 45, 0.18), transparent 16%),
-    radial-gradient(circle at 90% 72%, rgba(255, 179, 107, 0.14), transparent 18%),
-    linear-gradient(135deg, #0b4d2e 0%, #0f5a35 42%, #184f31 70%, #f2c58e 100%);
+    radial-gradient(circle at 16% 18%, rgba(59, 130, 246, 0.08), transparent 20%),
+    radial-gradient(circle at 84% 18%, rgba(96, 165, 250, 0.12), transparent 16%),
+    radial-gradient(circle at 90% 72%, rgba(147, 197, 253, 0.08), transparent 18%),
+    var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
@@ -163,7 +163,7 @@ html.dark {
 }
 
 ::selection {
-  background: rgba(241, 90, 36, 0.24);
+  background: rgba(59, 130, 246, 0.24);
   color: var(--ink);
 }
 
@@ -174,7 +174,7 @@ html.dark {
 
 .theme-panel {
   background: color-mix(in srgb, var(--surface) 88%, var(--background) 12%);
-  border-color: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-color: rgba(59, 130, 246, 0.16);
 }
 
 .theme-accent-gradient {

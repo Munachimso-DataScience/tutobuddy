@@ -20,8 +20,9 @@ import { getTasks, createTask, updateTaskStatus, deleteTask } from './controller
 import { getSchedules, createSchedule, deleteSchedule } from './controllers/scheduleController';
 import { initScheduler } from './utils/scheduler';
 import { getCurrentUser } from './controllers/authController';
-import { getAdminSummary } from './controllers/adminController';
-import { getLecturerSummary } from './controllers/lecturerController';
+import { getAdminSummary, getAdminUsers, updateAdminUserRole, deleteAdminUser, getAdminTemplates, createAdminTemplate, updateAdminTemplate, deleteAdminTemplate, getAdminContent, deleteAdminContent } from './controllers/adminController';
+import { createCourseOffering, getCourseOfferings, getLecturerSummary, sendLecturerReminder, getLecturerStudentHistory } from './controllers/lecturerController';
+import { updateProfile } from './controllers/profileController';
 import multer from 'multer';
 
 const app = express();
@@ -63,14 +64,31 @@ app.get('/health', async (req, res) => {
     }
 });
 
+
 // Auth / Profile Routes
 app.get('/api/auth/me', authMiddleware, getCurrentUser);
+app.patch('/api/profile/update', authMiddleware, updateProfile);
 
 // Admin Routes
 app.get('/api/admin/summary', authMiddleware, requireRoles('admin'), getAdminSummary);
+app.get('/api/admin/users', authMiddleware, requireRoles('admin'), getAdminUsers);
+app.patch('/api/admin/users/:id/role', authMiddleware, requireRoles('admin'), updateAdminUserRole);
+app.delete('/api/admin/users/:id', authMiddleware, requireRoles('admin'), deleteAdminUser);
+
+app.get('/api/admin/templates', authMiddleware, requireRoles('admin'), getAdminTemplates);
+app.post('/api/admin/templates', authMiddleware, requireRoles('admin'), createAdminTemplate);
+app.patch('/api/admin/templates/:id', authMiddleware, requireRoles('admin'), updateAdminTemplate);
+app.delete('/api/admin/templates/:id', authMiddleware, requireRoles('admin'), deleteAdminTemplate);
+
+app.get('/api/admin/content', authMiddleware, requireRoles('admin'), getAdminContent);
+app.delete('/api/admin/content/:type/:id', authMiddleware, requireRoles('admin'), deleteAdminContent);
 
 // Lecturer Routes
 app.get('/api/lecturer/summary', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerSummary);
+app.get('/api/lecturer/course-offerings', authMiddleware, requireRoles('lecturer', 'admin'), getCourseOfferings);
+app.post('/api/lecturer/course-offerings', authMiddleware, requireRoles('lecturer', 'admin'), createCourseOffering);
+app.post('/api/lecturer/reminders', authMiddleware, requireRoles('lecturer', 'admin'), sendLecturerReminder);
+app.get('/api/lecturer/students/:id/history', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerStudentHistory);
 
 // Protected Course Routes
 app.post('/api/courses', authMiddleware, upload.single('file'), createCourse);

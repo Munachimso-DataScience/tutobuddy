@@ -4,6 +4,8 @@ import { databases } from '../lib/appwrite-admin';
 import { Query } from 'node-appwrite';
 import axios from 'axios';
 import { getSchedulerStatus } from '../utils/scheduler';
+import { users } from '../lib/appwrite-admin';
+import { ID } from 'node-appwrite';
 
 export const getAdminSummary = async (req: Request, res: Response) => {
     try {
@@ -336,3 +338,116 @@ async function getHealthStats() {
         }
     };
 }
+
+// User Management
+export const getAdminUsers = async (req: Request, res: Response) => {
+    try {
+        const usersResponse = await listAllDocuments(COLLECTIONS.USERS);
+        return res.status(200).json({ users: usersResponse.documents });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const updateAdminUserRole = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+        if (!['student', 'lecturer', 'admin'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+        await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, id, { role });
+        // Optionally update Appwrite user labels/prefs if needed
+        return res.status(200).json({ message: 'Role updated' });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const deleteAdminUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await databases.deleteDocument(DATABASE_ID, COLLECTIONS.USERS, id);
+        try {
+            await users.delete(id);
+        } catch (e) {
+            console.warn('Auth user delete failed:', e);
+        }
+        return res.status(200).json({ message: 'User deleted' });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+// Templates Management
+export const getAdminTemplates = async (req: Request, res: Response) => {
+    try {
+        const templates = await listAllDocuments(COLLECTIONS.QUESTION_TEMPLATES);
+        return res.status(200).json({ templates: templates.documents });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const createAdminTemplate = async (req: Request, res: Response) => {
+    try {
+        const { name, prompt_text, is_active } = req.body;
+        const doc = await databases.createDocument(DATABASE_ID, COLLECTIONS.QUESTION_TEMPLATES, ID.unique(), {
+            name, prompt_text, is_active: is_active ?? true
+        });
+        return res.status(201).json(doc);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const updateAdminTemplate = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const doc = await databases.updateDocument(DATABASE_ID, COLLECTIONS.QUESTION_TEMPLATES, id, updates);
+        return res.status(200).json(doc);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const deleteAdminTemplate = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await databases.deleteDocument(DATABASE_ID, COLLECTIONS.QUESTION_TEMPLATES, id);
+        return res.status(200).json({ message: 'Template deleted' });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+// Content Management
+export const getAdminContent = async (req: Request, res: Response) => {
+    try {
+        const [courses, materials] = await Promise.all([
+            listAllDocuments(COLLECTIONS.COURSES),
+            listAllDocuments(COLLECTIONS.MATERIALS)
+        ]);
+        return res.status(200).json({ courses: courses.documents, materials: materials.documents });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const deleteAdminContent = async (req: Request, res: Response) => {
+    try {
+        const { type, id } = req.params; // type = 'course' or 'material'
+        if (type === 'course') {
+            await databases.deleteDocument(DATABASE_ID, COLLECTIONS.COURSES, id);
+        } else if (type === 'material') {
+            await databases.deleteDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        } else {
+            return res.status(400).json({ error: 'Invalid content type' });
+        }
+        return res.status(200).json({ message: 'Content deleted' });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+

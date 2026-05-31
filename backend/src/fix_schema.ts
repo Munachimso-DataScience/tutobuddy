@@ -106,6 +106,70 @@ const schema = [
         ]
     },
     {
+        id: COLLECTIONS.COURSE_OFFERINGS,
+        name: 'Course Offerings',
+        attributes: [
+            { key: 'title', type: 'string', size: 255, required: false },
+            { key: 'code', type: 'string', size: 255, required: false },
+            { key: 'description', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'department', type: 'string', size: 255, required: false, default: '' },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'lecturer_id', type: 'string', size: 255, required: false },
+            { key: 'term', type: 'string', size: 100, required: false, default: '' },
+            { key: 'status', type: 'string', size: 50, required: false, default: 'active' },
+            { key: 'created_at', type: 'datetime', required: false },
+            { key: 'updated_at', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.COURSE_ENROLLMENTS,
+        name: 'Course Enrollments',
+        attributes: [
+            { key: 'offering_id', type: 'string', size: 255, required: false },
+            { key: 'student_id', type: 'string', size: 255, required: false },
+            { key: 'status', type: 'string', size: 50, required: false, default: 'enrolled' },
+            { key: 'enrolled_at', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.LECTURER_REMINDERS,
+        name: 'Lecturer Reminders',
+        attributes: [
+            { key: 'author_id', type: 'string', size: 255, required: false },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'topic', type: 'string', size: 255, required: false, default: '' },
+            { key: 'message', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'recipients', type: 'integer', required: false, default: 0 },
+            { key: 'created_at', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.COURSE_OFFERINGS,
+        name: 'Course Offerings',
+        attributes: [
+            { key: 'title', type: 'string', size: 255, required: false },
+            { key: 'code', type: 'string', size: 255, required: false },
+            { key: 'description', type: 'string', size: 5000, required: false, default: '' },
+            { key: 'department', type: 'string', size: 255, required: false, default: '' },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'lecturer_id', type: 'string', size: 255, required: false },
+            { key: 'term', type: 'string', size: 100, required: false, default: '' },
+            { key: 'status', type: 'string', size: 50, required: false, default: 'active' },
+            { key: 'created_at', type: 'datetime', required: false }
+        ]
+    },
+    {
+        id: COLLECTIONS.COURSE_ENROLLMENTS,
+        name: 'Course Enrollments',
+        attributes: [
+            { key: 'student_id', type: 'string', size: 255, required: false },
+            { key: 'offering_id', type: 'string', size: 255, required: false },
+            { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+            { key: 'status', type: 'string', size: 50, required: false, default: 'enrolled' },
+            { key: 'created_at', type: 'datetime', required: false }
+        ]
+    },
+    {
         id: COLLECTIONS.NOTIFICATIONS,
         name: 'Notifications',
         attributes: [

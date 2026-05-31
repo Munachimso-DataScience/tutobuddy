@@ -102,6 +102,70 @@ async function setup() {
                     { key: 'last_study_minutes', type: 'integer', required: false, default: 0 },
                     { key: 'created_at', type: 'datetime', required: true }
                 ]
+            },
+            {
+                id: 'course_offerings',
+                name: 'Course Offerings',
+                attributes: [
+                    { key: 'title', type: 'string', size: 255, required: true },
+                    { key: 'code', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'description', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'department', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'lecturer_id', type: 'string', size: 255, required: true },
+                    { key: 'term', type: 'string', size: 100, required: false, default: '' },
+                    { key: 'status', type: 'string', size: 50, required: false, default: 'active' },
+                    { key: 'created_at', type: 'datetime', required: true },
+                    { key: 'updated_at', type: 'datetime', required: true }
+                ]
+            },
+            {
+                id: 'course_enrollments',
+                name: 'Course Enrollments',
+                attributes: [
+                    { key: 'offering_id', type: 'string', size: 255, required: true },
+                    { key: 'student_id', type: 'string', size: 255, required: true },
+                    { key: 'status', type: 'string', size: 50, required: false, default: 'enrolled' },
+                    { key: 'enrolled_at', type: 'datetime', required: true }
+                ]
+            },
+            {
+                id: 'lecturer_reminders',
+                name: 'Lecturer Reminders',
+                attributes: [
+                    { key: 'author_id', type: 'string', size: 255, required: true },
+                    { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'topic', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'message', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'recipients', type: 'integer', required: false, default: 0 },
+                    { key: 'created_at', type: 'datetime', required: true }
+                ]
+            },
+            {
+                id: 'course_offerings',
+                name: 'Course Offerings',
+                attributes: [
+                    { key: 'title', type: 'string', size: 255, required: true },
+                    { key: 'code', type: 'string', size: 255, required: true },
+                    { key: 'description', type: 'string', size: 5000, required: false, default: '' },
+                    { key: 'department', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'lecturer_id', type: 'string', size: 255, required: true },
+                    { key: 'term', type: 'string', size: 100, required: false, default: '' },
+                    { key: 'status', type: 'string', size: 50, required: false, default: 'active' },
+                    { key: 'created_at', type: 'datetime', required: true }
+                ]
+            },
+            {
+                id: 'course_enrollments',
+                name: 'Course Enrollments',
+                attributes: [
+                    { key: 'student_id', type: 'string', size: 255, required: true },
+                    { key: 'offering_id', type: 'string', size: 255, required: true },
+                    { key: 'class_group', type: 'string', size: 255, required: false, default: '' },
+                    { key: 'status', type: 'string', size: 50, required: false, default: 'enrolled' },
+                    { key: 'created_at', type: 'datetime', required: true }
+                ]
             }
         ];
 

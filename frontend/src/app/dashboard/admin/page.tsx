@@ -8,6 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { getAdminSummary } from '@/lib/api';
 import { getCachedJWT } from '@/lib/appwrite';
+import UserManagement from './UserManagement';
+import QuestionTemplateManagement from './QuestionTemplateManagement';
+import ContentManagement from './ContentManagement';
 
 type AdminSummary = {
     user?: {
@@ -243,6 +246,7 @@ export default function AdminDashboard() {
                                 ))}
                             </div>
                         </Card>
+                        <UserManagement />
                     </div>
                 </TabsContent>
 
@@ -334,6 +338,7 @@ export default function AdminDashboard() {
                                 <p className="text-2xl font-bold">{summary?.content?.duplicate_content ?? 0}</p>
                             </Card>
                         </div>
+                        <ContentManagement />
                     </div>
                 </TabsContent>
 
@@ -354,6 +359,7 @@ export default function AdminDashboard() {
                                 <p className="text-2xl font-bold">{summary?.templates?.inactive_templates ?? 0}</p>
                             </Card>
                         </div>
+                        <QuestionTemplateManagement />
                     </div>
                 </TabsContent>
             </Tabs>

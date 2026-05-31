@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
         { icon: History, label: "Tasks", href: "/dashboard/tasks" },
         { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
-        ...(role === 'lecturer' || role === 'admin'
+        ...(role === 'lecturer'
             ? [{ icon: BarChart3, label: 'Lecturer View', href: '/dashboard/lecturer' }]
             : []),
         ...(role === 'admin'
@@ -314,8 +314,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {role}
                                     </p>
                                 </div>
-                                <div className="h-8 w-8 bg-secondary/15 rounded-full flex items-center justify-center">
-                                    <UserCircle className="h-5 w-5 text-secondary" />
+                                <div className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center bg-secondary/15 border border-secondary/20">
+                                    <img 
+                                        src={(user?.prefs as any)?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=3b82f6&color=fff`} 
+                                        alt="Profile" 
+                                        className="h-full w-full object-cover"
+                                    />
                                 </div>
                             </div>
                         </div>

@@ -9,6 +9,9 @@ export const COLLECTIONS: {
     ACTIVITY: string;
     NOTIFICATIONS: string;
     STUDY_SNAPSHOTS: string;
+    LECTURER_REMINDERS: string;
+    COURSE_OFFERINGS: string;
+    COURSE_ENROLLMENTS: string;
     TASKS: string;
     SCHEDULES: string;
     QUESTION_TEMPLATES: string;
@@ -22,6 +25,9 @@ export const COLLECTIONS: {
     ACTIVITY: 'activity_logs',
     NOTIFICATIONS: 'notifications',
     STUDY_SNAPSHOTS: 'study_snapshots',
+    LECTURER_REMINDERS: 'lecturer_reminders',
+    COURSE_OFFERINGS: 'course_offerings',
+    COURSE_ENROLLMENTS: 'course_enrollments',
     TASKS: 'tasks',
     SCHEDULES: 'schedules',
     QUESTION_TEMPLATES: 'question_templates',

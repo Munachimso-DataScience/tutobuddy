@@ -18,7 +18,8 @@ import {
     Zap,
     Lock,
     Globe,
-    Palette
+    Palette,
+    Camera
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -89,7 +90,6 @@ const ToggleRow = ({
             type="button"
             onClick={() => onChange(!checked)}
             className={`relative h-7 w-12 rounded-full transition-all ${checked ? 'bg-secondary' : 'bg-gray-300 dark:bg-gray-700'}`}
-            aria-pressed={checked}
             aria-label={label}
         >
             <span
@@ -100,8 +100,9 @@ const ToggleRow = ({
 );
 
 export default function SettingsPage() {
-    const { user } = useAuth();
+    const { user, checkUser } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [avatarLoading, setAvatarLoading] = useState(false);
     const [smtpLoading, setSmtpLoading] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; ready?: boolean; host?: string; fromEmail?: string } | null>(null);
     const showSmtpStatusCard = false;
@@ -241,6 +242,36 @@ export default function SettingsPage() {
         }
     };
 
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Check size (max 50KB to fit in Appwrite preferences 64KB limit)
+        if (file.size > 50000) {
+            toast.error("Image too large. Please use an image under 50KB.");
+            return;
+        }
+
+        setAvatarLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target?.result as string;
+            try {
+                const { account } = await import('@/lib/appwrite');
+                const prefs = await account.getPrefs();
+                await account.updatePrefs({ ...prefs, avatarUrl: base64 });
+                await checkUser(); // Refresh user context
+                toast.success("Avatar updated successfully!");
+            } catch (err) {
+                console.error("Avatar upload failed:", err);
+                toast.error("Failed to update avatar.");
+            } finally {
+                setAvatarLoading(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
     return (
         <div className="space-y-8 pb-10">
             <div className="rounded-3xl border border-primary/10 bg-linear-to-br from-primary/10 via-background to-secondary/10 p-6 md:p-8 shadow-sm">
@@ -261,12 +292,47 @@ export default function SettingsPage() {
                             <User className="mr-2 h-5 w-5 text-primary dark:text-secondary" />
                             Profile Information
                         </h3>
+                        
+                        <div className="mb-6 flex items-center gap-6">
+                            <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-primary/20 bg-background/50 flex-shrink-0">
+                                {avatarLoading ? (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                    </div>
+                                ) : (
+                                    <img 
+                                        src={(user?.prefs as any)?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=3b82f6&color=fff`}
+                                        alt="Avatar"
+                                        className="h-full w-full object-cover"
+                                    />
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-foreground dark:text-cream mb-1">Profile Photo</p>
+                                <p className="text-xs text-foreground/60 dark:text-cream/60 mb-3 max-w-xs">
+                                    Upload a new avatar (Max 50KB). We recommend a square image.
+                                </p>
+                                <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white transition-all hover:bg-primary/90">
+                                    <Camera className="h-4 w-4" />
+                                    Change Photo
+                                    <input 
+                                        type="file" 
+                                        accept="image/jpeg, image/png, image/webp" 
+                                        className="hidden" 
+                                        onChange={handleAvatarUpload}
+                                        disabled={avatarLoading}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <label className="text-xs font-bold uppercase tracking-widest text-foreground/50">Full Name</label>
                                 <input
                                     type="text"
                                     defaultValue={user?.name || ''}
+                                    title="Full Name"
                                     className="w-full rounded-xl border-none bg-background/70 px-4 py-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-secondary dark:bg-background/20"
                                 />
                             </div>
@@ -276,6 +342,7 @@ export default function SettingsPage() {
                                     type="email"
                                     defaultValue={user?.email || ''}
                                     disabled
+                                    title="Email Address"
                                     className="w-full cursor-not-allowed rounded-xl border-none bg-gray-100 px-4 py-3 font-medium text-foreground/45 dark:bg-gray-800/50"
                                 />
                             </div>
