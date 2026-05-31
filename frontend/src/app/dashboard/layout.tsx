@@ -266,7 +266,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             <X className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                                         {loadingNotifications ? (
                                             <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
                                                 Loading notifications...

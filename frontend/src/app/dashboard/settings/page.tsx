@@ -105,7 +105,7 @@ export default function SettingsPage() {
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [smtpLoading, setSmtpLoading] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; ready?: boolean; host?: string; fromEmail?: string } | null>(null);
-    const showSmtpStatusCard = false;
+    const showSmtpStatusCard = true;
     const [theme, setTheme] = useState<ThemeMode>('dark');
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [studyReminders, setStudyReminders] = useState(true);

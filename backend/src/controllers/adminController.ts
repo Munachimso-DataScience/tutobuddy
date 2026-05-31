@@ -451,3 +451,22 @@ export const deleteAdminContent = async (req: Request, res: Response) => {
     }
 };
 
+export const toggleAdminContentFlag = async (req: Request, res: Response) => {
+    try {
+        const { type, id } = req.params;
+        const { is_flagged } = req.body;
+        
+        if (type === 'course') {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.COURSES, id, { is_flagged });
+        } else if (type === 'material') {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id, { is_flagged });
+        } else {
+            return res.status(400).json({ error: 'Invalid content type' });
+        }
+        
+        return res.status(200).json({ message: 'Content flag updated', is_flagged });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+

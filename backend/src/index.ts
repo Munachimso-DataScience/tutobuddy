@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import { setDefaultResultOrder } from 'node:dns';
+setDefaultResultOrder('ipv4first');
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,7 +23,7 @@ import { getTasks, createTask, updateTaskStatus, deleteTask } from './controller
 import { getSchedules, createSchedule, deleteSchedule } from './controllers/scheduleController';
 import { initScheduler } from './utils/scheduler';
 import { getCurrentUser } from './controllers/authController';
-import { getAdminSummary, getAdminUsers, updateAdminUserRole, deleteAdminUser, getAdminTemplates, createAdminTemplate, updateAdminTemplate, deleteAdminTemplate, getAdminContent, deleteAdminContent } from './controllers/adminController';
+import { getAdminSummary, getAdminUsers, updateAdminUserRole, deleteAdminUser, getAdminTemplates, createAdminTemplate, updateAdminTemplate, deleteAdminTemplate, getAdminContent, deleteAdminContent, toggleAdminContentFlag } from './controllers/adminController';
 import { createCourseOffering, getCourseOfferings, getLecturerSummary, sendLecturerReminder, getLecturerStudentHistory } from './controllers/lecturerController';
 import { updateProfile } from './controllers/profileController';
 import multer from 'multer';
@@ -82,6 +85,7 @@ app.delete('/api/admin/templates/:id', authMiddleware, requireRoles('admin'), de
 
 app.get('/api/admin/content', authMiddleware, requireRoles('admin'), getAdminContent);
 app.delete('/api/admin/content/:type/:id', authMiddleware, requireRoles('admin'), deleteAdminContent);
+app.patch('/api/admin/content/:type/:id/flag', authMiddleware, requireRoles('admin'), toggleAdminContentFlag);
 
 // Lecturer Routes
 app.get('/api/lecturer/summary', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerSummary);
