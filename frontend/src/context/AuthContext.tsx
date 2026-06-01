@@ -116,7 +116,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     throw error;
                 }
             }
-            return await checkUser();
+            
+            // Fix for Appwrite Web SDK localStorage fallback race condition
+            // When third-party cookies are blocked, Appwrite uses localStorage.
+            // A slight delay ensures the SDK attaches the fallback header to subsequent requests.
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const resolvedRole = await checkUser();
+            if (!resolvedRole || resolvedRole === 'student') {
+                // Verify user state was actually set, otherwise throw to prevent false positive redirect
+                const currentUser = await account.get().catch(() => null);
+                if (!currentUser) {
+                    throw new Error("Session verification failed. Please try again.");
+                }
+            }
+            return resolvedRole;
         } finally {
             setLoading(false);
         }
