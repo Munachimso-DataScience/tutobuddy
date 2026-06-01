@@ -420,7 +420,21 @@ export const checkInactivity = async (req: Request, res: Response) => {
                 );
 
                 if (recentActivity.total === 0) {
-                    inactiveUsers.push(user);
+                    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                    const recentNudges = await databases.listDocuments(
+                        DATABASE_ID,
+                        COLLECTIONS.NOTIFICATIONS,
+                        [
+                            Query.equal('user_id', user.$id),
+                            Query.equal('source', 'activity'),
+                            Query.greaterThan('created_at', sevenDaysAgo),
+                            Query.limit(1)
+                        ]
+                    );
+
+                    if (recentNudges.total === 0) {
+                        inactiveUsers.push(user);
+                    }
                 }
             } catch (activityError: any) {
                 console.warn(`Could not inspect recent activity for ${user.email}:`, activityError.message);
