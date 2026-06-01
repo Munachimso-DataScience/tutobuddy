@@ -94,13 +94,15 @@ export default function RegisterPage() {
                 className="max-w-lg w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-xl"
             >
                 <div className="text-center">
+                    <a href="/" className="block">
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="mx-auto h-20 w-20 mb-6 bg-white dark:bg-gray-700 rounded-3xl p-3 shadow-xl"
+                        className="mx-auto h-20 w-20 mb-6 bg-white dark:bg-gray-700 rounded-3xl p-3 shadow-xl hover:scale-105 transition-transform"
                     >
                         <img src="/logo.png" alt="TutorBuddy Logo" className="w-full h-full object-contain" />
                     </motion.div>
+                    </a>
                     <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
                         Create Your Account
                     </h2>
@@ -191,7 +193,7 @@ export default function RegisterPage() {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 disabled:opacity-50"
+                        className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-secondary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-all duration-200 disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <Loader2 className="animate-spin h-5 w-5" />
