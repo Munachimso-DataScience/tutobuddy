@@ -112,6 +112,22 @@ export default function CourseDetailsPage() {
         };
     }, []);
 
+    // Hack to prevent Chrome/Android from silently pausing long TTS after 15 seconds
+    useEffect(() => {
+        let keepAliveInterval: NodeJS.Timeout;
+        if (ttsPlaying && ttsActive) {
+            keepAliveInterval = setInterval(() => {
+                if (typeof window !== 'undefined' && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                    window.speechSynthesis.pause();
+                    window.speechSynthesis.resume();
+                }
+            }, 10000); // Tickle every 10 seconds
+        }
+        return () => {
+            if (keepAliveInterval) clearInterval(keepAliveInterval);
+        };
+    }, [ttsPlaying, ttsActive]);
+
     useEffect(() => {
         if (!ttsActive) return;
 
