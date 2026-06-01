@@ -318,18 +318,27 @@ export const getNotifications = async (req: Request, res: Response) => {
 
 export const markNotificationRead = async (req: Request, res: Response) => {
     try {
+        console.log(`[markNotificationRead] Called for notification ID: ${req.params.id}`);
         const { id } = req.params;
         const userId = (req as any).user.$id;
+        console.log(`[markNotificationRead] User ID: ${userId}`);
 
         const notification = await databases.getDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, id);
-        if (notification.user_id !== userId) {
+        console.log(`[markNotificationRead] Fetched notification: ${notification.$id}, user_id:`, notification.user_id);
+        
+        const docUserId = typeof notification.user_id === 'object' ? notification.user_id.$id : notification.user_id;
+        
+        if (docUserId !== userId) {
+            console.log(`[markNotificationRead] Forbidden: docUserId ${docUserId} !== ${userId}`);
             return res.status(403).json({ error: 'Forbidden' });
         }
 
+        console.log(`[markNotificationRead] Updating document to is_read: true...`);
         await databases.updateDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, id, {
             is_read: true
         });
 
+        console.log(`[markNotificationRead] Update successful!`);
         return res.status(200).json({ message: 'Notification marked as read.' });
     } catch (error: any) {
         console.error('Mark notification read error:', error.message);
