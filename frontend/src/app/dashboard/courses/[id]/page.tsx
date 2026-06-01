@@ -122,6 +122,11 @@ export default function CourseDetailsPage() {
     const handleReadAloud = async (materialId: string, title: string) => {
         if (typeof window === 'undefined') return;
         
+        // Mobile unlock hack: Browsers require a synchronous utterance on user click
+        const unlockUtterance = new SpeechSynthesisUtterance('');
+        unlockUtterance.volume = 0;
+        window.speechSynthesis.speak(unlockUtterance);
+
         if (ttsActive) {
             window.speechSynthesis.cancel();
         }
