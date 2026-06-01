@@ -30,7 +30,7 @@ if GROQ_API_KEY:
     except Exception as e:
         print(f"Error configuring Groq: {e}")
 
-def get_groq_completion(prompt: str, model_name="llama3-70b-8192", response_format=None):
+def get_groq_completion(prompt: str, model_name="llama-3.3-70b-versatile", response_format=None):
     if not groq_client:
         raise Exception("Groq client not initialized")
         
@@ -47,7 +47,7 @@ def get_groq_completion(prompt: str, model_name="llama3-70b-8192", response_form
         return completion.choices[0].message.content
     except Exception as e:
         print(f"Failed to load primary model {model_name}: {e}. Trying fallback chain...")
-        fallback_model = "mixtral-8x7b-32768"
+        fallback_model = "llama-3.1-8b-instant"
         completion_args["model"] = fallback_model
         completion = groq_client.chat.completions.create(**completion_args)
         return completion.choices[0].message.content
