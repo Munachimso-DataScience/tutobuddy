@@ -16,58 +16,41 @@ import gc
 import tempfile
 import shutil
 import json
-import google.generativeai as genai
-import pytesseract
+from groq import Groq
 
-# Download NLTK data
-def download_nltk():
-    libs = ['wordnet', 'omw-1.4', 'punkt', 'averaged_perceptron_tagger', 'stopwords']
-    data_path = os.environ.get('NLTK_DATA', '/opt/render/nltk_data')
-    if not os.path.exists(data_path):
-        os.makedirs(data_path, exist_ok=True)
-    nltk.data.path.append(data_path)
-    
-    # Only download if a key directory doesn't exist to speed up startup
-    if not os.path.exists(os.path.join(data_path, "corpora", "wordnet")):
-        print("NLTK data missing. Downloading...")
-        for lib in libs:
-            nltk.download(lib, download_dir=data_path, quiet=True)
-    else:
-        print("NLTK data already present.")
-
-download_nltk()
-
-load_dotenv()
-
-# Configure Google Gemini
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-gemini_available = False
-if GEMINI_API_KEY:
+# Configure Groq
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+groq_available = False
+groq_client = None
+if GROQ_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        gemini_available = True
-        print("Google Gemini API successfully configured!")
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        groq_available = True
+        print("Groq API successfully configured!")
     except Exception as e:
-        print(f"Error configuring Google Gemini: {e}")
+        print(f"Error configuring Groq: {e}")
 
-def get_gemini_model(model_name="gemini-2.5-flash"):
-    """
-    Returns a configured GenerativeModel with a robust fallback chain.
-    """
+def get_groq_completion(prompt: str, model_name="llama3-70b-8192", response_format=None):
+    if not groq_client:
+        raise Exception("Groq client not initialized")
+        
+    completion_args = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    
+    if response_format:
+        completion_args["response_format"] = response_format
+        
     try:
-        return genai.GenerativeModel(model_name)
+        completion = groq_client.chat.completions.create(**completion_args)
+        return completion.choices[0].message.content
     except Exception as e:
         print(f"Failed to load primary model {model_name}: {e}. Trying fallback chain...")
-        try:
-            return genai.GenerativeModel("gemini-2.5-flash")
-        except Exception:
-            try:
-                return genai.GenerativeModel("gemini-2.0-flash")
-            except Exception:
-                try:
-                    return genai.GenerativeModel("gemini-pro-latest")
-                except Exception:
-                    return genai.GenerativeModel("gemini-1.5-flash")
+        fallback_model = "mixtral-8x7b-32768"
+        completion_args["model"] = fallback_model
+        completion = groq_client.chat.completions.create(**completion_args)
+        return completion.choices[0].message.content
 
 def strip_json_markdown(text: str) -> str:
     """
@@ -570,10 +553,10 @@ async def generate_quiz(data: dict):
         performance_note = f"The learner's recent performance score is {performance_score}%. " if performance_score is not None else "No recent performance score is available. "
 
         # --- Premium Google Gemini Path ---
-        if gemini_available:
-            print("Running Premium Gemini Quiz Generator...")
+        if groq_available:
+            print("Running Premium Groq Quiz Generator...")
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
                 Generate a study quiz based on the text below. 
                 The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
@@ -634,31 +617,16 @@ async def generate_quiz(data: dict):
                 {text}
                 """
                 
-                try:
-                    response = model.generate_content(
-                        prompt,
-                        generation_config={"response_mime_type": "application/json"}
-                    )
-                except Exception as first_err:
-                    print(f"Quiz generation with primary model failed ({first_err}), attempting fallback...")
-                    fallback_model = get_gemini_model("gemini-2.0-flash")
-                    try:
-                        response = fallback_model.generate_content(
-                            prompt,
-                            generation_config={"response_mime_type": "application/json"}
-                        )
-                    except Exception:
-                        response = fallback_model.generate_content(prompt)
-                
-                text_content = strip_json_markdown(response.text)
+                text_content = get_groq_completion(prompt, response_format={"type": "json_object"})
+                text_content = strip_json_markdown(text_content)
                 quiz_data = json.loads(text_content)
                 if "questions" in quiz_data and len(quiz_data["questions"]) > 0:
-                    print(f"Gemini Quiz Generation successful! Generated {len(quiz_data['questions'])} questions.")
+                    print(f"Groq Quiz Generation successful! Generated {len(quiz_data['questions'])} questions.")
                     return {"quiz": quiz_data}
                 else:
-                    print("Gemini response did not contain questions. Falling back to local NLTK...")
+                    print("Groq response did not contain questions. Falling back to local NLTK...")
             except Exception as e:
-                print(f"Gemini quiz generation failed ({e}). Falling back to local NLTK...")
+                print(f"Groq quiz generation failed ({e}). Falling back to local NLTK...")
 
         # --- Local NLTK Fallback Path ---
         print("Running Local NLTK Quiz Generator...")
@@ -818,9 +786,9 @@ async def explain_incorrect(data: dict):
             topic=topic
         )
 
-        if gemini_available:
+        if groq_available:
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
 You are an expert tutor explaining a wrong answer to a university student.
 Use the deterministic teaching notes below as the factual base. Expand them, do not replace them with vague filler.
@@ -1393,10 +1361,10 @@ async def generate_quiz(data: dict):
             text = text[:30000]
 
         # --- Premium Google Gemini Path ---
-        if gemini_available:
-            print("Running Premium Gemini Quiz Generator...")
+        if groq_available:
+            print("Running Premium Groq Quiz Generator...")
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
                 Generate a study quiz based on the text below. 
                 The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
@@ -1449,31 +1417,16 @@ async def generate_quiz(data: dict):
                 {text}
                 """
                 
-                try:
-                    response = model.generate_content(
-                        prompt,
-                        generation_config={"response_mime_type": "application/json"}
-                    )
-                except Exception as first_err:
-                    print(f"Quiz generation with primary model failed ({first_err}), attempting fallback...")
-                    fallback_model = get_gemini_model("gemini-2.0-flash")
-                    try:
-                        response = fallback_model.generate_content(
-                            prompt,
-                            generation_config={"response_mime_type": "application/json"}
-                        )
-                    except Exception:
-                        response = fallback_model.generate_content(prompt)
-                
-                text_content = strip_json_markdown(response.text)
+                text_content = get_groq_completion(prompt, response_format={"type": "json_object"})
+                text_content = strip_json_markdown(text_content)
                 quiz_data = json.loads(text_content)
                 if "questions" in quiz_data and len(quiz_data["questions"]) > 0:
-                    print(f"Gemini Quiz Generation successful! Generated {len(quiz_data['questions'])} questions.")
+                    print(f"Groq Quiz Generation successful! Generated {len(quiz_data['questions'])} questions.")
                     return {"quiz": quiz_data}
                 else:
-                    print("Gemini response did not contain questions. Falling back to local NLTK...")
+                    print("Groq response did not contain questions. Falling back to local NLTK...")
             except Exception as e:
-                print(f"Gemini quiz generation failed ({e}). Falling back to local NLTK...")
+                print(f"Groq quiz generation failed ({e}). Falling back to local NLTK...")
 
         # --- Local NLTK Fallback Path ---
         print("Running Local NLTK Quiz Generator...")
@@ -1633,9 +1586,9 @@ async def explain_incorrect(data: dict):
             topic=topic
         )
 
-        if gemini_available:
+        if groq_available:
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
 You are an expert tutor explaining a wrong answer to a university student.
 Use the deterministic teaching notes below as the factual base. Expand them, do not replace them with vague filler.
@@ -1764,9 +1717,9 @@ async def adaptive_feedback(data: dict):
             "difficulty": difficulty
         }
 
-        if gemini_available:
+        if groq_available:
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
 You are a warm academic tutor explaining why the student's next quiz level changed.
 
@@ -1919,10 +1872,10 @@ async def summarize(data: dict):
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
             
-        if gemini_available:
-            print("Generating Premium Gemini Summary...")
+        if groq_available:
+            print("Generating Premium Groq Summary...")
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 prompt = f"""
                 Create a structured, highly educational, and comprehensive summary of the study notes/material provided below.
                 The summary MUST be beautifully formatted in GitHub-flavored Markdown.
@@ -1936,15 +1889,10 @@ async def summarize(data: dict):
                 Source text to summarize:
                 {text}
                 """
-                try:
-                    response = model.generate_content(prompt)
-                except Exception as first_err:
-                    print(f"Summary generation with primary model failed ({first_err}), attempting fallback...")
-                    fallback_model = get_gemini_model("gemini-2.0-flash")
-                    response = fallback_model.generate_content(prompt)
-                return {"summary": response.text}
+                text_content = get_groq_completion(prompt)
+                return {"summary": text_content}
             except Exception as e:
-                print(f"Gemini summary generation failed: {e}. Falling back to local summarization.")
+                print(f"Groq summary generation failed: {e}. Falling back to local summarization.")
                 
         # --- Local Fallback Summarization ---
         print("Generating Local NLTK Summary...")
@@ -1993,10 +1941,10 @@ async def ocr_evaluate(file: UploadFile = File(...)):
         img_bytes = await file.read()
         
         # --- Premium Gemini Vision Path ---
-        if gemini_available:
+        if groq_available:
             print("Processing general OCR via Gemini Vision...")
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 image_part = {
                     "mime_type": file.content_type or "image/png",
                     "data": img_bytes
@@ -2102,10 +2050,10 @@ async def evaluate_handwritten(
         img_bytes = await file.read()
         
         # --- Premium Gemini Vision Path ---
-        if gemini_available:
+        if groq_available:
             print("Evaluating Handwritten Answer via Gemini Vision...")
             try:
-                model = get_gemini_model("gemini-2.5-flash")
+                
                 image_part = {
                     "mime_type": file.content_type or "image/png",
                     "data": img_bytes
