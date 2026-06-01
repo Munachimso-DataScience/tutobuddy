@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import PyPDF2
 import io
 import random
