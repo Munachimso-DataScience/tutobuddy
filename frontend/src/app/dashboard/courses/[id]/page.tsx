@@ -112,22 +112,6 @@ export default function CourseDetailsPage() {
         };
     }, []);
 
-    // Hack to prevent Chrome/Android from silently pausing long TTS after 15 seconds
-    useEffect(() => {
-        let keepAliveInterval: NodeJS.Timeout;
-        if (ttsPlaying && ttsActive) {
-            keepAliveInterval = setInterval(() => {
-                if (typeof window !== 'undefined' && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-                    window.speechSynthesis.pause();
-                    window.speechSynthesis.resume();
-                }
-            }, 10000); // Tickle every 10 seconds
-        }
-        return () => {
-            if (keepAliveInterval) clearInterval(keepAliveInterval);
-        };
-    }, [ttsPlaying, ttsActive]);
-
     useEffect(() => {
         if (!ttsActive) return;
 
@@ -135,11 +119,41 @@ export default function CourseDetailsPage() {
         activeChunk?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, [ttsActive, ttsChunkIndex]);
 
+    const playChunks = (chunksToPlay: string[], startIndex: number, speed: number) => {
+        if (typeof window === 'undefined') return;
+        window.speechSynthesis.cancel();
+        
+        chunksToPlay.forEach((chunk, index) => {
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.rate = speed;
+            
+            utterance.onstart = () => {
+                setTtsChunkIndex(startIndex + index);
+                setTtsProgress(Math.floor(((startIndex + index) / (startIndex + chunksToPlay.length)) * 100));
+                setTtsPlaying(true);
+            };
+            
+            utterance.onend = () => {
+                if (index === chunksToPlay.length - 1) {
+                    setTtsPlaying(false);
+                    setTtsProgress(100);
+                }
+            };
+            
+            utterance.onerror = (e) => {
+                if (e.error !== 'canceled' && e.error !== 'interrupted') {
+                    console.error("TTS Chunk Error:", e);
+                }
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        });
+    };
+
     const handleReadAloud = async (materialId: string, title: string) => {
         if (typeof window === 'undefined') return;
         
-        // Mobile unlock hack: Browsers require a synchronous utterance on user click
-        const unlockUtterance = new SpeechSynthesisUtterance('');
+        const unlockUtterance = new SpeechSynthesisUtterance(' ');
         unlockUtterance.volume = 0;
         window.speechSynthesis.speak(unlockUtterance);
 
@@ -158,6 +172,7 @@ export default function CourseDetailsPage() {
                 toast.error("This resource does not have any speakable text.");
                 return;
             }
+            
             const chunks = splitTextIntoChunks(text);
             const spokenText = chunks.join(' ');
 
@@ -169,28 +184,8 @@ export default function CourseDetailsPage() {
             setTtsActive(true);
             setTtsProgress(0);
             
-            const utterance = new SpeechSynthesisUtterance(spokenText);
-            utterance.rate = ttsSpeed;
+            playChunks(chunks, 0, ttsSpeed);
             
-            utterance.onboundary = (event) => {
-                const charIndex = typeof event.charIndex === 'number' ? event.charIndex : 0;
-                setTtsProgress(Math.floor((charIndex / spokenText.length) * 100));
-                setTtsChunkIndex(findChunkIndexFromCharIndex(charIndex, chunks));
-            };
-            
-            utterance.onend = () => {
-                setTtsPlaying(false);
-                setTtsProgress(100);
-                setTtsChunkIndex(Math.max(chunks.length - 1, 0));
-            };
-            
-            utterance.onerror = () => {
-                setTtsPlaying(false);
-            };
-            
-            setTtsUtterance(utterance);
-            setTtsPlaying(true);
-            window.speechSynthesis.speak(utterance);
         } catch (error) {
             console.error("TTS failed:", error);
             toast.error("Failed to load text for audio playback.");
@@ -201,7 +196,6 @@ export default function CourseDetailsPage() {
 
     const handleTtsPlayPause = () => {
         if (typeof window === 'undefined') return;
-        if (!ttsUtterance) return;
         
         if (ttsPlaying) {
             window.speechSynthesis.pause();
@@ -210,7 +204,10 @@ export default function CourseDetailsPage() {
             if (window.speechSynthesis.paused) {
                 window.speechSynthesis.resume();
             } else {
-                window.speechSynthesis.speak(ttsUtterance);
+                const remainingChunks = ttsChunks.slice(ttsChunkIndex);
+                if (remainingChunks.length > 0) {
+                    playChunks(remainingChunks, ttsChunkIndex, ttsSpeed);
+                }
             }
             setTtsPlaying(true);
         }
@@ -232,35 +229,11 @@ export default function CourseDetailsPage() {
         setTtsSpeed(speed);
         if (typeof window === 'undefined') return;
         
-        if (ttsActive && ttsText) {
-            window.speechSynthesis.cancel();
-            const charIndex = Math.floor((ttsProgress / 100) * ttsText.length);
-            const remainingText = ttsText.substring(charIndex);
-            const chunks = ttsChunks.length > 0 ? ttsChunks : splitTextIntoChunks(ttsText);
-            
-            const newUtterance = new SpeechSynthesisUtterance(remainingText || ttsText);
-            newUtterance.rate = speed;
-            
-            let charOffset = charIndex;
-            newUtterance.onboundary = (event) => {
-                const progressIndex = charOffset + (typeof event.charIndex === 'number' ? event.charIndex : 0);
-                setTtsProgress(Math.floor((progressIndex / ttsText.length) * 100));
-                setTtsChunkIndex(findChunkIndexFromCharIndex(progressIndex, chunks));
-            };
-            
-            newUtterance.onend = () => {
-                setTtsPlaying(false);
-                setTtsProgress(100);
-                setTtsChunkIndex(Math.max(chunks.length - 1, 0));
-            };
-            
-            newUtterance.onerror = () => {
-                setTtsPlaying(false);
-            };
-            
-            setTtsUtterance(newUtterance);
-            window.speechSynthesis.speak(newUtterance);
-            setTtsPlaying(true);
+        if (ttsActive) {
+            const remainingChunks = ttsChunks.slice(ttsChunkIndex);
+            if (remainingChunks.length > 0) {
+                playChunks(remainingChunks, ttsChunkIndex, speed);
+            }
         }
     };
 
