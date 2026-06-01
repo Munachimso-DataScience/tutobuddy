@@ -64,7 +64,8 @@ export default function RegisterPage() {
                         study_minutes_today: 0,
                         last_study_minutes: 0,
                         recent_content_covered: '',
-                        last_study_session_at: new Date().toISOString()
+                        last_study_session_at: new Date().toISOString(),
+                        Email: email
                     }
                 );
 
