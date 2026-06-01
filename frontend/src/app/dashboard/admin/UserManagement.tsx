@@ -11,6 +11,7 @@ type User = {
     $id: string;
     full_name?: string;
     email?: string;
+    Email?: string;
     role?: string;
     school?: string;
     department?: string;
@@ -89,7 +90,7 @@ export default function UserManagement() {
                             {users.map(user => (
                                 <tr key={user.$id} className="border-b last:border-0 hover:bg-muted/50">
                                     <td className="px-4 py-3 font-medium">{user.full_name || 'N/A'}</td>
-                                    <td className="px-4 py-3 text-muted-foreground">{user.email || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-muted-foreground">{user.email || user.Email || 'N/A'}</td>
                                     <td className="px-4 py-3">
                                         <select 
                                             className="bg-background border rounded px-2 py-1 text-xs"
