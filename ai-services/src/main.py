@@ -627,6 +627,9 @@ async def generate_quiz(data: dict):
                   ]
                 }}
                 
+                CRITICAL INSTRUCTION: DO NOT summarize the text. DO NOT write any introductory or concluding text. 
+                You must ONLY output the raw JSON object containing the questions array. No markdown, no explanations outside the JSON.
+                
                 Source material text:
                 {text}
                 """
@@ -1438,6 +1441,9 @@ async def generate_quiz(data: dict):
                      }}
                   ]
                 }}
+                
+                CRITICAL INSTRUCTION: DO NOT summarize the text. DO NOT write any introductory or concluding text. 
+                You must ONLY output the raw JSON object containing the questions array. No markdown, no explanations outside the JSON.
                 
                 Source material text:
                 {text}
