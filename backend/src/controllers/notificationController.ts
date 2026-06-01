@@ -440,7 +440,7 @@ export const checkInactivity = async (req: Request, res: Response) => {
                     userId: user.$id,
                     title: notificationTemplates.inactivity.title,
                     message: notificationTemplates.inactivity.message,
-                    link: links.courses,
+                    link: '/dashboard/courses',
                     type: notificationTemplates.inactivity.type,
                     source: notificationTemplates.inactivity.source
                 });
@@ -533,7 +533,7 @@ export const generateWeeklyReports = async (req: Request, res: Response) => {
                     userId: user.$id,
                     title: notificationTemplates.weeklyReport.title,
                     message: `${summaryMessage}${recommendationText}`,
-                    link: links.reports,
+                    link: '/dashboard/reports',
                     type: notificationTemplates.weeklyReport.type,
                     source: notificationTemplates.weeklyReport.source
                 });
@@ -616,7 +616,7 @@ export const sendDailyStudySummaries = async (req: Request, res: Response) => {
                     userId: user.$id,
                     title: 'Your daily study summary is ready',
                     message: `${studySummary.summaryText}${weaknesses.length > 0 ? ` Weak areas: ${weaknesses.join(', ')}.` : ''}`,
-                    link: links.reports,
+                    link: '/dashboard/reports',
                     type: 'summary',
                     source: 'daily_summary'
                 });
@@ -726,7 +726,7 @@ export const sendStudySessionReminders = async (req: Request, res: Response) => 
                     userId: user.$id,
                     title: 'Study reminders for today',
                     message: messageParts.join(' '),
-                    link: upcomingTasks.length > 0 ? links.dashboard : links.courses,
+                    link: upcomingTasks.length > 0 ? '/dashboard' : '/dashboard/courses',
                     type: 'reminder',
                     source: 'task_schedule'
                 });
