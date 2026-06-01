@@ -18,7 +18,9 @@ import {
     X,
     BarChart3,
     Camera
-} from 'lucide-react';
+,
+    Check,
+    CheckCircle2} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -133,14 +135,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         };
     }, [fetchNotifications, user]);
 
-    const handleNotificationClick = async (notification: NotificationItem) => {
+    const handleNotificationClick = async (notification: NotificationItem, e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        if (notification.is_read) return;
+
         try {
+            // Optimistic update
+            setNotifications(prev => prev.map(n => 
+                n.$id === notification.$id ? { ...n, is_read: true } : n
+            ));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+
             const jwt = await getCachedJWT();
             await axios.patch(`${API_URL}/api/notifications/${notification.$id}/read`, {}, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
         } catch {
-            // ignore read errors
+            fetchNotifications(); // revert on failure
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        const unread = notifications.filter(n => !n.is_read);
+        if (unread.length === 0) return;
+
+        // Optimistic update
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+
+        try {
+            const jwt = await getCachedJWT();
+            await Promise.all(
+                unread.map(n => 
+                    axios.patch(`${API_URL}/api/notifications/${n.$id}/read`, {}, {
+                        headers: { Authorization: `Bearer ${jwt}` }
+                    })
+                )
+            );
+        } catch {
+            fetchNotifications(); // revert on failure
         }
     };
 
@@ -256,6 +293,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             <p className="text-sm font-bold text-foreground dark:text-cream">Notifications</p>
                                             <p className="text-xs text-foreground/50 dark:text-cream/50">Your study reminders, reports, and course alerts</p>
                                         </div>
+                                        {unreadCount > 0 && (
+                                            <button 
+                                                onClick={handleMarkAllRead}
+                                                className="absolute bottom-3 right-4 text-[10px] font-bold text-secondary hover:text-secondary/80 flex items-center gap-1"
+                                            >
+                                                <CheckCircle2 className="h-3 w-3" /> Mark all read
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => setShowNotifications(false)}
@@ -292,7 +337,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                             <p className="text-xs text-foreground/60 dark:text-cream/60 leading-relaxed">{item.message}</p>
                                                         </div>
                                                         {!item.is_read && (
-                                                            <span className="mt-1 h-2.5 w-2.5 rounded-full bg-secondary flex-shrink-0" />
+                                                            <div className="flex flex-col items-center gap-2">
+                                                                <span className="h-2.5 w-2.5 rounded-full bg-secondary flex-shrink-0" />
+                                                                <button 
+                                                                    onClick={(e) => handleNotificationClick(item, e)}
+                                                                    className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                                                                    title="Mark as read"
+                                                                >
+                                                                    <Check className="h-3 w-3 text-secondary" />
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </Link>
