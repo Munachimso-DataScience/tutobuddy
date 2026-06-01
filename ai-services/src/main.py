@@ -1365,10 +1365,11 @@ async def generate_quiz(data: dict):
             print("Running Premium Groq Quiz Generator...")
             try:
                 
-                prompt = f"""
-                Generate a study quiz based on the text below. 
-                The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
+
+                mcq_instruction = f"The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ)." if num_mcq > 0 else ""
+                essay_instruction = f"The quiz MUST contain exactly {num_essay} Essay/Short Answer questions." if num_essay > 0 else ""
                 
+                mcq_format = """
                 For MCQs:
                 - The questions must be deep, conceptual, and check real-world logic or application.
                 - Avoid simple blank fill-ins or direct word matching.
@@ -1379,16 +1380,29 @@ async def generate_quiz(data: dict):
                 - "correct_letter" must be 'A', 'B', 'C', or 'D', matching the correct option.
                 - Include a detailed educational "explanation" for why it is correct.
                 - A quality "score" between 80 and 100.
+                """ if num_mcq > 0 else ""
                 
+                essay_format = """
                 For Essays:
                 - The questions must ask the student to explain core concepts, relationships between mechanisms, or summary of main themes in the text.
                 - "context" must be a supporting reference sentence from the text.
                 - "answer" must be a comprehensive reference master answer.
                 - "explanation" must be educational criteria for a correct response.
+                """ if num_essay > 0 else ""
+                
+                prompt = f"""
+                Generate a study quiz based on the text below. 
+                {mcq_instruction}
+                {essay_instruction}
+                
+                {mcq_format}
+                
+                {essay_format}
                 
                 Output the result STRICTLY as a JSON object matching this schema:
                 {{
                   "questions": [
+
                      {{
                        "type": "mcq",
                        "question": "question text",

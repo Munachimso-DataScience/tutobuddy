@@ -79,6 +79,7 @@ export default function CourseDetailsPage() {
     const [currentQuiz, setCurrentQuiz] = useState<any>(null);
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [adaptiveFeedback, setAdaptiveFeedback] = useState<any>(null);
+    const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
     const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [pastedContent, setPastedContent] = useState('');
@@ -325,7 +326,8 @@ export default function CourseDetailsPage() {
 
             const response = await axios.post(`${API_URL}/api/quizzes/generate`, {
                 materialId,
-                adaptiveScore
+                adaptiveScore,
+                quizType
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });

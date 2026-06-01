@@ -65,7 +65,7 @@ const buildAdaptiveQuizConfig = (difficulty: QuizDifficulty) => {
 export const generateQuiz = async (req: any, res: any) => {
     const AI_URL = getAiUrl();
     try {
-        const { materialId, adaptiveScore } = req.body;
+        const { materialId, adaptiveScore, quizType } = req.body;
         const userId = req.user.$id;
 
         console.log(`Using Database: ${DATABASE_ID}, Quiz Collection: ${COLLECTIONS.QUIZZES}`);
@@ -93,6 +93,19 @@ export const generateQuiz = async (req: any, res: any) => {
             : null;
         const adaptiveDifficulty = getAdaptiveDifficulty(averageRecentScore);
         const adaptiveConfig = buildAdaptiveQuizConfig(adaptiveDifficulty);
+        
+        // Override counts based on quizType
+        let finalNumMcq = adaptiveConfig.num_mcq;
+        let finalNumEssay = adaptiveConfig.num_essay;
+        const totalQuestions = finalNumMcq + finalNumEssay;
+        
+        if (quizType === 'objective') {
+            finalNumMcq = totalQuestions;
+            finalNumEssay = 0;
+        } else if (quizType === 'theory') {
+            finalNumMcq = 0;
+            finalNumEssay = totalQuestions;
+        }
         console.log(`Adaptive quiz mode for user ${userId} on course ${material.course_id}: ${adaptiveDifficulty} (avg score: ${averageRecentScore ?? 'n/a'})`);
         
         // --- 1. AI Service Discovery & Warm-up ---
@@ -178,14 +191,14 @@ export const generateQuiz = async (req: any, res: any) => {
             throw new Error(`The study material is too short to generate a high-quality quiz (found ${text?.length || 0} characters). Please provide more content.`);
         }
 
-        console.log(`Requesting adaptive quiz (${adaptiveConfig.num_mcq} MCQs, ${adaptiveConfig.num_essay} Essays) from AI for ${text.length} chars...`);
+        console.log(`Requesting adaptive quiz (${finalNumMcq} MCQs, ${finalNumEssay} Essays) from AI for ${text.length} chars...`);
 
         // 5. Generate Quiz
         const quizRes = await axios.post(`${finalAiUrl}/generate-quiz`, {
             text: text,
-            num_mcq: adaptiveConfig.num_mcq,
-            num_essay: adaptiveConfig.num_essay,
-            num_questions: adaptiveConfig.num_mcq + adaptiveConfig.num_essay,
+            num_mcq: finalNumMcq,
+            num_essay: finalNumEssay,
+            num_questions: finalNumMcq + finalNumEssay,
             difficulty: adaptiveDifficulty,
             performance_score: averageRecentScore,
             adaptive_guidance: adaptiveConfig.guidance
