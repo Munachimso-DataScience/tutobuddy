@@ -80,7 +80,6 @@ export default function CourseDetailsPage() {
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [adaptiveFeedback, setAdaptiveFeedback] = useState<any>(null);
     const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
-    const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
     const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [pastedContent, setPastedContent] = useState('');
