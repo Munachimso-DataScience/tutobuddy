@@ -80,6 +80,7 @@ export default function CourseDetailsPage() {
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [adaptiveFeedback, setAdaptiveFeedback] = useState<any>(null);
     const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
+    const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
     const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [pastedContent, setPastedContent] = useState('');
@@ -461,9 +462,34 @@ export default function CourseDetailsPage() {
                 {/* Materials List */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold">Study Resources</h2>
-                            <span className="text-sm text-gray-400 font-medium">{materials.length} files</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-lg font-bold">Study Resources</h2>
+                                <span className="text-sm text-gray-400 font-medium block mt-1">{materials.length} files</span>
+                            </div>
+                            <div className="mt-4 sm:mt-0 flex flex-col items-start sm:items-end">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quiz Preference</span>
+                                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                                    <button 
+                                        onClick={() => setQuizType('mixed')}
+                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'mixed' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                    >
+                                        Mixed
+                                    </button>
+                                    <button 
+                                        onClick={() => setQuizType('objective')}
+                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'objective' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                    >
+                                        Objective
+                                    </button>
+                                    <button 
+                                        onClick={() => setQuizType('theory')}
+                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'theory' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                    >
+                                        Theory
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         {loading ? (
