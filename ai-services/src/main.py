@@ -530,9 +530,12 @@ async def generate_quiz(data: dict):
         performance_score = data.get("performance_score")
         adaptive_guidance = data.get("adaptive_guidance", "")
         topic_focus = data.get("topicFocus", "")
+        custom_template = data.get("custom_template", None)
         
         print(f"--- Quiz Generation Request Received ---")
         print(f"Text length: {len(text)} characters. Targets: {num_mcq} MCQ, {num_essay} Essay. Topic Focus: {topic_focus or 'None'}")
+        if custom_template:
+            print(f"Active custom template received and will be injected.")
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
@@ -560,6 +563,14 @@ async def generate_quiz(data: dict):
             print("Running Premium Groq Quiz Generator...")
             try:
                 
+                # If an admin template is provided, wrap it securely to prevent JSON breakage.
+                template_instruction = f"""
+                ### CUSTOM ADMIN INSTRUCTION / TEMPLATE ###
+                {custom_template}
+                ###########################################
+                (Note: You MUST obey the above instructions for the style and tone of the questions, but you MUST STILL output strictly valid JSON matching the schema below.)
+                """ if custom_template else ""
+
                 prompt = f"""
                 Generate a study quiz based on the text below. 
                 The quiz MUST contain exactly {num_mcq} Multiple Choice Questions (MCQ) and exactly {num_essay} Essay/Short Answer questions.
@@ -567,6 +578,8 @@ async def generate_quiz(data: dict):
                 {performance_note}
                 Use this teaching style: {selected_guidance}
                 {topic_instruction}
+                
+                {template_instruction}
                 
                 For MCQs:
                 - The questions must be deep, conceptual, and check real-world logic or application.

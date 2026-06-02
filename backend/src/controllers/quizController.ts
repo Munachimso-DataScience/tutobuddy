@@ -110,6 +110,22 @@ export const generateQuiz = async (req: any, res: any) => {
             finalNumMcq = Math.max(1, Math.floor(totalQuestions * 0.7));
             finalNumEssay = totalQuestions - finalNumMcq;
         }
+        // --- 0. Fetch Active Template ---
+        let activeTemplatePrompt = null;
+        try {
+            const templateRes = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.QUESTION_TEMPLATES,
+                [Query.equal('is_active', true), Query.limit(1)]
+            );
+            if (templateRes.total > 0 && templateRes.documents[0].prompt_text) {
+                activeTemplatePrompt = templateRes.documents[0].prompt_text;
+                console.log(`Using active template: ${templateRes.documents[0].name}`);
+            }
+        } catch (e) {
+            console.warn("Could not fetch active template, defaulting to AI's internal prompt.");
+        }
+
         console.log(`Adaptive quiz mode for user ${userId} on course ${material.course_id}: ${adaptiveDifficulty} (avg score: ${averageRecentScore ?? 'n/a'}). Topic: ${topicFocus || 'General'}. Count: ${totalQuestions}`);
         
         // --- 1. AI Service Discovery & Warm-up ---
@@ -204,6 +220,7 @@ export const generateQuiz = async (req: any, res: any) => {
             num_essay: finalNumEssay,
             num_questions: finalNumMcq + finalNumEssay,
             topicFocus: topicFocus,
+            custom_template: activeTemplatePrompt,
             difficulty: adaptiveDifficulty,
             performance_score: averageRecentScore,
             adaptive_guidance: adaptiveConfig.guidance
