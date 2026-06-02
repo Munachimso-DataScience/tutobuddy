@@ -15,6 +15,7 @@ type User = {
     role?: string;
     school?: string;
     department?: string;
+    assigned_courses?: string;
     created_at?: string;
 };
 
@@ -55,6 +56,19 @@ export default function UserManagement() {
         }
     };
 
+    const handleAssignedCoursesChange = async (userId: string, assignedCourses: string) => {
+        try {
+            const jwt = await getCachedJWT();
+            await axios.patch(`${API_URL}/api/admin/users/${userId}/role`, { assigned_courses: assignedCourses }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            toast.success("Assigned courses updated");
+            loadUsers();
+        } catch (error) {
+            toast.error("Failed to update assigned courses");
+        }
+    };
+
     const handleDelete = async (userId: string) => {
         if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
         try {
@@ -83,6 +97,7 @@ export default function UserManagement() {
                                 <th className="px-4 py-3">Email</th>
                                 <th className="px-4 py-3">Role</th>
                                 <th className="px-4 py-3">School / Dept</th>
+                                <th className="px-4 py-3 min-w-[200px]">Assigned Courses (Lecturers)</th>
                                 <th className="px-4 py-3">Actions</th>
                             </tr>
                         </thead>
@@ -106,6 +121,27 @@ export default function UserManagement() {
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground text-xs">
                                         {user.school || 'N/A'} <br/> {user.department || ''}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {user.role === 'lecturer' ? (
+                                            <input 
+                                                type="text"
+                                                className="bg-background border rounded px-2 py-1 text-xs w-full"
+                                                defaultValue={user.assigned_courses || ''}
+                                                placeholder="e.g. PHY101, CHM101"
+                                                onBlur={(e) => {
+                                                    if (e.target.value !== (user.assigned_courses || '')) {
+                                                        handleAssignedCoursesChange(user.$id, e.target.value);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.currentTarget.blur();
+                                                    }
+                                                }}
+                                                title="Assigned Courses"
+                                            />
+                                        ) : null}
                                     </td>
                                     <td className="px-4 py-3">
                                         <button 

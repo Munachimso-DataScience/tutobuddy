@@ -352,13 +352,25 @@ export const getAdminUsers = async (req: Request, res: Response) => {
 export const updateAdminUserRole = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { role } = req.body;
-        if (!['student', 'lecturer', 'admin'].includes(role)) {
-            return res.status(400).json({ error: 'Invalid role' });
+        const { role, assigned_courses } = req.body;
+        
+        const updateData: any = {};
+        if (role) {
+            if (!['student', 'lecturer', 'admin'].includes(role)) {
+                return res.status(400).json({ error: 'Invalid role' });
+            }
+            updateData.role = role;
         }
-        await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, id, { role });
-        // Optionally update Appwrite user labels/prefs if needed
-        return res.status(200).json({ message: 'Role updated' });
+        
+        if (assigned_courses !== undefined) {
+            updateData.assigned_courses = assigned_courses;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.USERS, id, updateData);
+        }
+        
+        return res.status(200).json({ message: 'User updated successfully' });
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
     }

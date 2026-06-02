@@ -42,24 +42,14 @@ export const getLecturerCourseOfferings = async (jwt?: string) => {
 
 export const createLecturerCourseOffering = async (
     jwt: string | undefined,
-    payload: {
-        title: string;
-        code?: string;
-        description?: string;
-        department?: string;
-        class_group?: string;
-        term?: string;
-        status?: string;
-        auto_enroll?: boolean;
-    }
+    payload: FormData
 ) => {
     const res = await fetch(`${API_URL}/api/lecturer/course-offerings`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
             ...(jwt ? { Authorization: `Bearer ${jwt}` } : {})
         },
-        body: JSON.stringify(payload)
+        body: payload
     });
 
     if (!res.ok) {

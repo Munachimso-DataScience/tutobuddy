@@ -1,9 +1,12 @@
 import { Request, Response } from 'express';
 import { Query } from 'node-appwrite';
 import axios from 'axios';
-import { COLLECTIONS, DATABASE_ID } from '../lib/collections';
-import { databases } from '../lib/appwrite-admin';
+import { COLLECTIONS, DATABASE_ID, BUCKET_ID } from '../lib/collections';
+import { databases, storage } from '../lib/appwrite-admin';
 import { ID } from 'node-appwrite';
+const { InputFile } = require('node-appwrite/file');
+import fs from 'fs';
+import path from 'path';
 
 const PAGE_SIZE = 100;
 
@@ -588,6 +591,30 @@ export const createCourseOffering = async (req: Request, res: Response) => {
             updated_at: now
         });
 
+        const file = (req as any).file;
+        let uploadedFileId: string | null = null;
+        let originalFileName = '';
+        let fileExt = '';
+
+        if (file) {
+            try {
+                const appwriteFile = await storage.createFile(
+                    BUCKET_ID,
+                    ID.unique(),
+                    InputFile.fromPath(file.path, file.originalname)
+                );
+                uploadedFileId = appwriteFile.$id;
+                originalFileName = file.originalname;
+                fileExt = path.extname(file.originalname).substring(1) || 'unknown';
+                fs.unlinkSync(file.path);
+            } catch (err: any) {
+                console.error('Failed to upload file to storage:', err.message);
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+            }
+        }
+
         const profilesResponse = await listAllDocuments(COLLECTIONS.USERS);
         const shouldAutoEnroll = String((req.body || {}).auto_enroll ?? 'true').toLowerCase() !== 'false';
         const students = shouldAutoEnroll
@@ -596,13 +623,42 @@ export const createCourseOffering = async (req: Request, res: Response) => {
         const enrollments = [];
 
         for (const student of students) {
+            const studentId = normalizeText(student.user_id || student.$id);
             const enrollment = await databases.createDocument(DATABASE_ID, COLLECTIONS.COURSE_ENROLLMENTS, ID.unique(), {
                 offering_id: offering.$id,
-                student_id: normalizeText(student.user_id || student.$id),
+                student_id: studentId,
                 status: 'enrolled',
                 enrolled_at: now
             });
             enrollments.push(enrollment);
+
+            // Replicate course for student private workspace
+            try {
+                const course = await databases.createDocument(DATABASE_ID, COLLECTIONS.COURSES, ID.unique(), {
+                    title: normalizeText(title),
+                    name: normalizeText(title),
+                    description: normalizeText(description),
+                    code: normalizeText(code),
+                    student_id: studentId,
+                    progress: 0,
+                    exam_readiness: 0,
+                    category: normalizeText(department) || 'General',
+                    created_at: now
+                });
+
+                if (uploadedFileId) {
+                    await databases.createDocument(DATABASE_ID, COLLECTIONS.MATERIALS, ID.unique(), {
+                        course_id: course.$id,
+                        file_id: uploadedFileId,
+                        title: originalFileName,
+                        type: fileExt,
+                        created_at: now,
+                        uploaded_at: now
+                    });
+                }
+            } catch (replErr: any) {
+                console.error(`Failed to replicate course for student ${studentId}:`, replErr.message);
+            }
         }
 
         return res.status(201).json({

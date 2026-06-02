@@ -38,7 +38,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-    res.status(200).send('<h1>TutorBuddy API</h1><p>The backend is running. Use the frontend to interact with the service.</p><a href="/health">Check Health Status</a>');
+    res.status(200).json({ status: "TutorBuddy API is running natively." });
 });
 
 import { databases } from './lib/appwrite-admin';
@@ -90,7 +90,7 @@ app.patch('/api/admin/content/:type/:id/flag', authMiddleware, requireRoles('adm
 // Lecturer Routes
 app.get('/api/lecturer/summary', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerSummary);
 app.get('/api/lecturer/course-offerings', authMiddleware, requireRoles('lecturer', 'admin'), getCourseOfferings);
-app.post('/api/lecturer/course-offerings', authMiddleware, requireRoles('lecturer', 'admin'), createCourseOffering);
+app.post('/api/lecturer/course-offerings', authMiddleware, requireRoles('lecturer', 'admin'), upload.single('file'), createCourseOffering);
 app.post('/api/lecturer/reminders', authMiddleware, requireRoles('lecturer', 'admin'), sendLecturerReminder);
 app.get('/api/lecturer/students/:id/history', authMiddleware, requireRoles('lecturer', 'admin'), getLecturerStudentHistory);
 

@@ -137,6 +137,7 @@ export default function LecturerDashboard() {
     const [offeringStatus, setOfferingStatus] = useState('active');
     const [autoEnroll, setAutoEnroll] = useState(true);
     const [savingOffering, setSavingOffering] = useState(false);
+    const [offeringFile, setOfferingFile] = useState<File | null>(null);
 
     useEffect(() => {
         const loadSummary = async () => {
@@ -231,16 +232,22 @@ export default function LecturerDashboard() {
         try {
             setSavingOffering(true);
             const jwt = await getCachedJWT();
-            const result = await createLecturerCourseOffering(jwt, {
-                title: offeringTitle,
-                code: offeringCode,
-                description: offeringDescription,
-                department: offeringDepartment,
-                class_group: offeringClassGroup,
-                term: offeringTerm,
-                status: offeringStatus,
-                auto_enroll: autoEnroll
-            });
+            
+            const formData = new FormData();
+            formData.append('title', offeringTitle);
+            if (offeringCode) formData.append('code', offeringCode);
+            if (offeringDescription) formData.append('description', offeringDescription);
+            if (offeringDepartment) formData.append('department', offeringDepartment);
+            if (offeringClassGroup) formData.append('class_group', offeringClassGroup);
+            if (offeringTerm) formData.append('term', offeringTerm);
+            if (offeringStatus) formData.append('status', offeringStatus);
+            formData.append('auto_enroll', autoEnroll.toString());
+            
+            if (offeringFile) {
+                formData.append('file', offeringFile);
+            }
+
+            const result = await createLecturerCourseOffering(jwt, formData);
             toast.success(`Course offering created${result.enrolled ? ` and ${result.enrolled} students enrolled` : ''}.`);
             setOfferingTitle('');
             setOfferingCode('');
@@ -250,6 +257,7 @@ export default function LecturerDashboard() {
             setOfferingTerm('');
             setOfferingStatus('active');
             setAutoEnroll(true);
+            setOfferingFile(null);
             const refreshed = await getLecturerCourseOfferings(jwt);
             setOfferings(refreshed.offerings || []);
         } catch (err) {
@@ -510,6 +518,11 @@ export default function LecturerDashboard() {
                                 <div>
                                     <label className="mb-1 block text-sm font-medium">Description</label>
                                     <textarea value={offeringDescription} onChange={(e) => setOfferingDescription(e.target.value)} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Short description of this course offering" />
+                                </div>
+                                <div>
+                                    <label htmlFor="courseMaterialFile" className="mb-1 block text-sm font-medium">Course Material (PDF/DOCX)</label>
+                                    <input id="courseMaterialFile" title="Upload Course Material File" type="file" onChange={(e) => setOfferingFile(e.target.files ? e.target.files[0] : null)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" accept=".pdf,.docx,.doc,.txt" />
+                                    <p className="text-xs text-muted-foreground mt-1">This file will be automatically added to enrolled students' study materials.</p>
                                 </div>
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <div>

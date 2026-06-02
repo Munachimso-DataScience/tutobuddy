@@ -44,30 +44,51 @@ export default function RegisterPage() {
                 }
             }
 
-            // 3. Create Profile in Database
-            await databases.createDocument(
-                process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-                process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_USERS!,
-                userAccount.$id,
-                    {
-                        user_id: userAccount.$id,
-                        full_name: fullName,
-                        school: school,
-                        course_of_study: course.trim(),
-                        role,
-                        department: '',
-                        class_group: '',
-                        assigned_courses: '',
-                        current_streak: 0,
-                        last_active: new Date().toISOString(),
-                        study_minutes_total: 0,
-                        study_minutes_today: 0,
-                        last_study_minutes: 0,
-                        recent_content_covered: '',
-                        last_study_session_at: new Date().toISOString(),
-                        Email: email
+            // 3. Create Profile in Database with retry mechanism for Appwrite Replication Lag
+            let profileCreated = false;
+            let lastError: any = null;
+            
+            for (let i = 0; i < 5; i++) {
+                try {
+                    await databases.createDocument(
+                        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+                        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_USERS!,
+                        userAccount.$id,
+                        {
+                            user_id: userAccount.$id,
+                            full_name: fullName,
+                            school: school,
+                            course_of_study: course.trim(),
+                            role,
+                            department: '',
+                            class_group: '',
+                            assigned_courses: '',
+                            current_streak: 0,
+                            last_active: new Date().toISOString(),
+                            study_minutes_total: 0,
+                            study_minutes_today: 0,
+                            last_study_minutes: 0,
+                            recent_content_covered: '',
+                            last_study_session_at: new Date().toISOString(),
+                            Email: email
+                        }
+                    );
+                    profileCreated = true;
+                    break;
+                } catch (err: any) {
+                    lastError = err;
+                    if (err?.code === 401) {
+                        console.warn(`Profile creation retry ${i + 1}/5 due to replication lag...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } else {
+                        throw err; // Throw immediately if it's not an auth lag error
                     }
-                );
+                }
+            }
+
+            if (!profileCreated) {
+                throw new Error('Failed to create profile after multiple attempts. Please try logging in: ' + (lastError?.message || ''));
+            }
 
             toast.success('Account created successfully!');
             router.push(role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');

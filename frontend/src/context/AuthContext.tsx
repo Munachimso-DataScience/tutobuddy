@@ -38,6 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [role, setRole] = useState<UserRole>('student');
     const [loading, setLoading] = useState(true);
 
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const checkUser = async (): Promise<UserRole> => {
         try {
             console.log('Checking for active session...');
@@ -96,17 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             clearCachedJWT();
 
-            // Proactively check for and clear any existing session first
-            try {
-                const existingUser = await account.get();
-                console.log('Found existing session for:', existingUser.email, '— clearing it before fresh login.');
-                await account.deleteSession('current');
-                // Brief wait for Appwrite to finalize session deletion
-                await new Promise(resolve => setTimeout(resolve, 500));
-            } catch {
-                // No existing session — proceed normally
-            }
-
             try {
                 await account.createEmailPasswordSession(email, pass);
                 console.log('Session created successfully');
@@ -129,16 +120,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
             
-            // Fix for Appwrite Cloud replication lag & localStorage fallback race condition
-            // When a session is created, read replicas might take 1-3 seconds to sync.
-            // We retry checking the user up to 5 times.
+            // Fix for Appwrite Cloud replication lag & localStorage fallback race condition.
+            // When a session is created, read replicas can take a few seconds to accept it.
+            // Retry longer before giving up so the session has time to settle.
             let resolvedRole: 'student' | 'lecturer' | 'admin' | null = null;
             let retryCount = 0;
-            const maxRetries = 5;
+            const maxRetries = 10;
             let currentUser = null;
             
             while (retryCount < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                const delay = Math.min(1000 + retryCount * 500, 3000);
+                await sleep(delay);
                 console.log(`Verifying session... (Attempt ${retryCount + 1}/${maxRetries})`);
                 
                 try {
@@ -154,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             if (!currentUser) {
+                clearCachedJWT();
                 throw new Error("Session verification failed after multiple attempts. Please try logging in again.");
             }
             
