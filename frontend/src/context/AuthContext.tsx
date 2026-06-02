@@ -129,20 +129,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
             
-            // Fix for Appwrite Web SDK localStorage fallback race condition
-            // When third-party cookies are blocked, Appwrite uses localStorage.
-            // A slight delay ensures the SDK attaches the fallback header to subsequent requests.
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Fix for Appwrite Cloud replication lag & localStorage fallback race condition
+            // When a session is created, read replicas might take 1-3 seconds to sync.
+            // We retry checking the user up to 5 times.
+            let resolvedRole: 'student' | 'lecturer' | 'admin' | null = null;
+            let retryCount = 0;
+            const maxRetries = 5;
+            let currentUser = null;
             
-            const resolvedRole = await checkUser();
-            if (!resolvedRole || resolvedRole === 'student') {
-                // Verify user state was actually set, otherwise throw to prevent false positive redirect
-                const currentUser = await account.get().catch(() => null);
-                if (!currentUser) {
-                    throw new Error("Session verification failed. Please try again.");
+            while (retryCount < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log(`Verifying session... (Attempt ${retryCount + 1}/${maxRetries})`);
+                
+                try {
+                    currentUser = await account.get();
+                    if (currentUser) {
+                        resolvedRole = await checkUser();
+                        break;
+                    }
+                } catch (e) {
+                    console.log('Session verification pending replica sync...', e);
                 }
+                retryCount++;
             }
-            return resolvedRole;
+
+            if (!currentUser) {
+                throw new Error("Session verification failed after multiple attempts. Please try logging in again.");
+            }
+            
+            return resolvedRole || 'student';
         } finally {
             setLoading(false);
         }
