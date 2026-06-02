@@ -19,6 +19,7 @@ import json
 from groq import Groq
 
 # Configure Groq
+load_dotenv()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 groq_available = False
 groq_client = None
@@ -2230,7 +2231,7 @@ Return valid JSON only:
     "hint": "your hint here"
 }}
 """
-        chat_completion = client.chat.completions.create(
+        chat_completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a helpful study buddy AI. You output strictly valid JSON."},
@@ -2285,7 +2286,7 @@ async def chat_material(data: dict):
         
         if groq_available:
             try:
-                chat_completion = client.chat.completions.create(
+                chat_completion = groq_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are a helpful study buddy AI. You output strictly valid JSON."},
@@ -2298,20 +2299,9 @@ async def chat_material(data: dict):
                 return payload
             except Exception as e:
                 print(f"Groq Chat Error: {e}")
-                # Fallback to Gemini handled below if needed, but since groq is active we assume it works or fails
                 raise e
         else:
-            # Fallback to Gemini
-            model = genai.GenerativeModel('gemini-2.5-pro')
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    response_mime_type="application/json",
-                    temperature=0.3
-                )
-            )
-            payload = json.loads(response.text)
-            return payload
+            raise Exception("Groq API key not configured")
             
     except Exception as e:
         print(f"Chat Material Error: {e}")
