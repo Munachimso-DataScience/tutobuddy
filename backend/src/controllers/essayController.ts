@@ -8,7 +8,7 @@ const getAiUrl = () => {
 
     if (isRender) {
         if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
-            return 'http://tutobuddy-ai:8000';
+            return 'https://patienceigwe-tutorbuddy-ai.hf.space';
         }
     }
     return envUrl || 'http://localhost:8000';

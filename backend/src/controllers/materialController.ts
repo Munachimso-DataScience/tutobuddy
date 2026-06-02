@@ -96,7 +96,7 @@ const getAiUrl = () => {
     const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1' || !!process.env.RENDER_SERVICE_ID;
     if (isRender) {
         if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
-            return 'http://tutobuddy-ai:8000';
+            return 'https://patienceigwe-tutorbuddy-ai.hf.space';
         }
     }
     return envUrl || 'http://localhost:8000';

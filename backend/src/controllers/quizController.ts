@@ -18,7 +18,7 @@ const getAiUrl = () => {
         // If the user hasn't set an explicit internal URL, or it looks like a public one
         if (!envUrl || envUrl.includes('onrender.com') || envUrl.includes('localhost')) {
             // We'll try the name from render.yaml first
-            return 'http://tutobuddy-ai:8000';
+            return 'https://patienceigwe-tutorbuddy-ai.hf.space';
         }
     }
 
@@ -276,7 +276,7 @@ export const generateQuiz = async (req: any, res: any) => {
             message: error.message,
             ai_status: error.response?.status,
             ai_data: error.response?.data,
-            hint: 'Ensure AI_SERVICE_URL is set to http://tutobuddy-ai:8000 for internal Render networking'
+            hint: 'Ensure AI_SERVICE_URL is set to https://patienceigwe-tutorbuddy-ai.hf.space for internal Render networking'
         });
     }
 };
