@@ -778,6 +778,8 @@ export default function CourseDetailsPage() {
                                 </div>
                                 <button 
                                     onClick={() => setIsChatOpen(false)}
+                                    aria-label="Close Chat Modal"
+                                    title="Close Chat"
                                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
                                 >
                                     <X className="h-5 w-5" />
@@ -826,6 +828,8 @@ export default function CourseDetailsPage() {
                                     />
                                     <button
                                         type="submit"
+                                        aria-label="Send Message"
+                                        title="Send Message"
                                         disabled={!chatInput.trim() || chatLoading}
                                         className="h-11 w-11 flex items-center justify-center bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                     >

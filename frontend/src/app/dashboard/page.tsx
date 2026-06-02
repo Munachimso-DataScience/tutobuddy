@@ -125,6 +125,20 @@ export default function DashboardPage() {
         );
     }
 
+    const today = new Date().toISOString().slice(0, 10);
+    const todaysLogs = stats?.recentLogs?.filter((log: any) => log.timestamp?.startsWith(today)) || [];
+    
+    const quizDone = todaysLogs.some((log: any) => log.type.includes('quiz') || log.type.includes('evaluate'));
+    const uploadDone = todaysLogs.some((log: any) => log.type.includes('upload') || log.type.includes('material'));
+    const essayDone = todaysLogs.some((log: any) => log.type.includes('essay'));
+
+    const dailyQuests = [
+        { title: 'Quiz Master', desc: 'Complete any 10-question quiz', xp: '+50 XP', done: quizDone, color: 'bg-primary' },
+        { title: 'The Scholar', desc: 'Upload and read 1 new document', xp: '+30 XP', done: uploadDone, color: 'bg-accent' },
+        { title: 'Essay Writer', desc: 'Submit 1 high-quality essay', xp: '+100 XP', done: essayDone, color: 'bg-denim' }
+    ];
+    const completedQuestsCount = dailyQuests.filter(q => q.done).length;
+
     return (
         <div className="space-y-8 pb-10">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -201,16 +215,12 @@ export default function DashboardPage() {
                         <p className="text-sm text-foreground/60 font-medium">Complete these to level up your exam readiness</p>
                     </div>
                     <div className="px-4 py-2 bg-secondary/10 rounded-xl text-secondary text-xs font-black uppercase tracking-widest">
-                        0/3 Complete
+                        {completedQuestsCount}/3 Complete
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[
-                        { title: "Quiz Master", desc: "Complete any 10-question quiz", xp: "+50 XP", done: false, color: "bg-primary" },
-                        { title: "The Scholar", desc: "Upload and read 1 new document", xp: "+30 XP", done: false, color: "bg-accent" },
-                        { title: "Essay Writer", desc: "Submit 1 high-quality essay", xp: "+100 XP", done: false, color: "bg-denim" }
-                    ].map((quest, i) => (
+                    {dailyQuests.map((quest, i) => (
                         <div key={i} className="flex items-center p-4 bg-background/70 dark:bg-background/15 rounded-2xl group cursor-pointer hover:bg-surface/90 dark:hover:bg-surface-2/40 transition-all border border-transparent hover:border-primary/10 dark:hover:border-primary/20">
                             <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-secondary/10`}>
                                 <CheckCircle2 size={20} className={quest.done ? "text-white" : "text-white/30"} />
