@@ -19,6 +19,8 @@ import {
     Square,
     Sparkles,
     Clipboard,
+    MessageCircle,
+    Send,
     X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -106,6 +108,25 @@ export default function CourseDetailsPage() {
     const [summaryText, setSummaryText] = useState('');
     const [summaryTitle, setSummaryTitle] = useState('');
     const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
+
+    // Chat States
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMaterialId, setChatMaterialId] = useState<string | null>(null);
+    const [chatTitle, setChatTitle] = useState('');
+    const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', content: string}[]>([]);
+    const [chatInput, setChatInput] = useState('');
+    const [chatLoading, setChatLoading] = useState(false);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        if (isChatOpen) {
+            scrollToBottom();
+        }
+    }, [chatMessages, isChatOpen]);
 
     useEffect(() => {
         return () => {
@@ -255,6 +276,39 @@ export default function CourseDetailsPage() {
             toast.error("Failed to generate notes summary.");
         } finally {
             setLoadingSummary(null);
+        }
+    };
+
+    const handleOpenChat = (materialId: string, title: string) => {
+        setChatMaterialId(materialId);
+        setChatTitle(title);
+        setChatMessages([{ role: 'ai', content: `Hello! I'm your AI tutor. What questions do you have about "${title}"?` }]);
+        setIsChatOpen(true);
+    };
+
+    const handleSendMessage = async () => {
+        if (!chatInput.trim() || !chatMaterialId) return;
+        
+        const userMsg = chatInput;
+        setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setChatInput('');
+        setChatLoading(true);
+        
+        try {
+            const jwt = await getCachedJWT();
+            const res = await axios.post(`${API_URL}/api/materials/${chatMaterialId}/chat`, {
+                question: userMsg
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+            
+            setChatMessages(prev => [...prev, { role: 'ai', content: res.data.answer }]);
+        } catch (error) {
+            console.error("Chat failed:", error);
+            toast.error("Failed to get an answer.");
+            setChatMessages(prev => [...prev, { role: 'ai', content: "Sorry, I couldn't get an answer right now. Please try again later." }]);
+        } finally {
+            setChatLoading(false);
         }
     };
 
@@ -565,6 +619,13 @@ export default function CourseDetailsPage() {
                                                 Read Aloud
                                             </button>
                                             <button 
+                                                onClick={() => handleOpenChat(file.$id, file.title)}
+                                                className="inline-flex items-center text-[10px] bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-orange-700 transition-colors shadow-sm whitespace-nowrap"
+                                            >
+                                                <MessageCircle className="h-3 w-3 mr-1" />
+                                                Ask AI
+                                            </button>
+                                            <button 
                                                 onClick={(e) => handleDeleteMaterial(e, file.$id)}
                                                 aria-label="Delete resource"
                                                 title="Delete resource"
@@ -689,6 +750,93 @@ export default function CourseDetailsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Chat Modal */}
+            <AnimatePresence>
+                {isChatOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setIsChatOpen(false)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-2xl shadow-2xl relative z-10 border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden max-h-[85vh]"
+                        >
+                            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/30 text-orange-600 rounded-lg flex items-center justify-center">
+                                        <MessageCircle className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white leading-tight">Chat with AI</h3>
+                                        <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">{chatTitle}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setIsChatOpen(false)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900 min-h-[300px]">
+                                {chatMessages.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                                            msg.role === 'user' 
+                                            ? 'bg-blue-600 text-white rounded-tr-sm' 
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                                        }`}>
+                                            {msg.role === 'ai' ? (
+                                                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                            ) : (
+                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {chatLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 text-gray-500 animate-spin" />
+                                            <span className="text-sm text-gray-500 font-medium">Thinking...</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800">
+                                <form 
+                                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <input
+                                        type="text"
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        placeholder="Ask a question about this material..."
+                                        className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={chatLoading}
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={!chatInput.trim() || chatLoading}
+                                        className="h-11 w-11 flex items-center justify-center bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                    >
+                                        <Send className="h-5 w-5" />
+                                    </button>
+                                </form>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* ======================================================== */}
             {/* TEXT-TO-SPEECH PLAYER DRAWER */}

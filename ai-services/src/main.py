@@ -2245,6 +2245,79 @@ Return valid JSON only:
         print(f"Hint Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/chat-material")
+async def chat_material(data: dict):
+    try:
+        context_text = data.get("text", "")
+        question = data.get("question", "")
+        
+        if not context_text or not question:
+            raise HTTPException(status_code=400, detail="Missing text or question")
+            
+        # Limit context to avoid hitting token limits for very large PDFs
+        max_chars = 30000
+        if len(context_text) > max_chars:
+            context_text = context_text[:max_chars] + "... [Content Truncated]"
+
+        prompt = f"""
+        You are a helpful and expert AI Study Tutor. 
+        Your student is asking a question about a specific study material.
+        
+        STUDY MATERIAL CONTEXT (First {max_chars} characters):
+        {context_text}
+        
+        STUDENT QUESTION:
+        {question}
+        
+        INSTRUCTIONS:
+        1. Answer the student's question accurately and clearly.
+        2. Base your answer PRIMARILY on the provided STUDY MATERIAL CONTEXT.
+        3. If the answer is not in the context, you may use your general knowledge, but mention that it goes beyond the provided text.
+        4. Keep your answer concise (1-3 paragraphs) unless more detail is specifically requested.
+        5. Format your response in clean Markdown (use bolding, bullet points, etc. where helpful).
+        
+        Return a strictly valid JSON object with the key "answer" containing your Markdown response.
+        Example:
+        {{
+            "answer": "Here is the explanation... **bold text**."
+        }}
+        """
+        
+        if groq_available:
+            try:
+                chat_completion = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful study buddy AI. You output strictly valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.3
+                )
+                payload = json.loads(chat_completion.choices[0].message.content)
+                return payload
+            except Exception as e:
+                print(f"Groq Chat Error: {e}")
+                # Fallback to Gemini handled below if needed, but since groq is active we assume it works or fails
+                raise e
+        else:
+            # Fallback to Gemini
+            model = genai.GenerativeModel('gemini-2.5-pro')
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            payload = json.loads(response.text)
+            return payload
+            
+    except Exception as e:
+        print(f"Chat Material Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

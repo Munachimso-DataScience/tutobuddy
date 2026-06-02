@@ -10,7 +10,7 @@ import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
 import { requireRoles } from './middleware/roles';
 import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
-import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial } from './controllers/materialController';
+import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial, chatWithMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes, updateQuizScore } from './controllers/quizController';
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
@@ -105,6 +105,7 @@ app.get('/api/materials/:courseId', authMiddleware, getMaterials);
 app.delete('/api/materials/:id', authMiddleware, deleteMaterial);
 app.get('/api/materials/:id/text', authMiddleware, getMaterialText);
 app.post('/api/materials/:id/summarize', authMiddleware, summarizeMaterial);
+app.post('/api/materials/:id/chat', authMiddleware, chatWithMaterial);
 
 // Activity Logging Routes
 app.post('/api/activity/log', authMiddleware, logActivity);

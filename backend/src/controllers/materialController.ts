@@ -182,3 +182,30 @@ export const summarizeMaterial = async (req: any, res: any) => {
     }
 };
 
+export const chatWithMaterial = async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const { question } = req.body;
+        
+        if (!question) {
+            return res.status(400).json({ error: 'Question is required' });
+        }
+        
+        const material = await databases.getDocument(DATABASE_ID, COLLECTIONS.MATERIALS, id);
+        const text = await extractTextFromMaterial(material);
+        
+        const AI_URL = getAiUrl();
+        console.log(`Requesting chat response from AI for question: "${question.substring(0, 50)}..."`);
+        
+        const chatRes = await axios.post(`${AI_URL}/chat-material`, {
+            text: text,
+            question: question
+        }, { timeout: 180000 });
+        
+        res.status(200).json({ answer: chatRes.data.answer });
+    } catch (error: any) {
+        console.error('chatWithMaterial error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};
+

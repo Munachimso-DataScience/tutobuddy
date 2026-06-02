@@ -37,6 +37,15 @@ Generate questions aimed at a beginner who is just learning this topic for the f
 Focus purely on foundational definitions, core concepts, and basic terminology.
 Keep the language extremely simple and accessible.
 Ensure the explanations are highly detailed and use simple real-world analogies to explain why the answer is correct.`
+    },
+    {
+        name: 'Mathematics for Computer Science',
+        is_active: false,
+        prompt_text: `You are an expert Professor of Computer Science and Discrete Mathematics.
+Generate questions that bridge the gap between mathematical theory and computational application.
+Focus heavily on logic, sets, graph theory, combinatorics, algorithms, and computational complexity (Big-O).
+Where possible, include small pseudocode snippets or ask the student to trace the mathematical logic of an algorithm.
+Require the student to apply mathematical reasoning rather than just plugging numbers into formulas.`
     }
 ];
 
