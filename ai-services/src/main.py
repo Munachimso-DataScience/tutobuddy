@@ -31,13 +31,18 @@ if GROQ_API_KEY:
     except Exception as e:
         print(f"Error configuring Groq: {e}")
 
-def get_groq_completion(prompt: str, model_name="llama-3.3-70b-versatile", response_format=None):
+def get_groq_completion(prompt: str, model_name="llama-3.3-70b-versatile", response_format=None, system_message=None):
     if not groq_client:
         raise Exception("Groq client not initialized")
         
+    messages = []
+    if system_message:
+        messages.append({"role": "system", "content": system_message})
+    messages.append({"role": "user", "content": prompt})
+        
     completion_args = {
         "model": model_name,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
     }
     
     if response_format:
@@ -2296,19 +2301,16 @@ async def chat_material(data: dict):
         
         if groq_available:
             try:
-                chat_completion = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful study buddy AI. You output strictly valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
+                system_msg = "You are a helpful study buddy AI. You output strictly valid JSON."
+                response_text = get_groq_completion(
+                    prompt=prompt, 
                     response_format={"type": "json_object"},
-                    temperature=0.3
+                    system_message=system_msg
                 )
-                payload = json.loads(chat_completion.choices[0].message.content)
+                payload = json.loads(response_text)
                 return payload
             except Exception as e:
-                print(f"Groq Chat Error: {e}")
+                print(f"Groq Chat Error after fallbacks: {e}")
                 raise e
         else:
             raise Exception("Groq API key not configured")
