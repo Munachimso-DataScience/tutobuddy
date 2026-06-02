@@ -80,6 +80,8 @@ export default function CourseDetailsPage() {
     const [currentMaterialId, setCurrentMaterialId] = useState<string | null>(null);
     const [adaptiveFeedback, setAdaptiveFeedback] = useState<any>(null);
     const [quizType, setQuizType] = useState<'mixed' | 'objective' | 'theory'>('mixed');
+    const [topicFocus, setTopicFocus] = useState<string>('');
+    const [questionCount, setQuestionCount] = useState<string>('');
     const [generatingQuiz, setGeneratingQuiz] = useState(false);
     const [uploadMethod, setUploadMethod] = useState<'file' | 'text'>('file');
     const [pastedContent, setPastedContent] = useState('');
@@ -327,7 +329,9 @@ export default function CourseDetailsPage() {
             const response = await axios.post(`${API_URL}/api/quizzes/generate`, {
                 materialId,
                 adaptiveScore,
-                quizType
+                quizType,
+                topicFocus: topicFocus.trim() || undefined,
+                questionCount: questionCount ? parseInt(questionCount, 10) : undefined
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
@@ -467,26 +471,46 @@ export default function CourseDetailsPage() {
                                 <span className="text-sm text-gray-400 font-medium block mt-1">{materials.length} files</span>
                             </div>
                             <div className="mt-4 sm:mt-0 flex flex-col items-start sm:items-end">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quiz Preference</span>
-                                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                                    <button 
-                                        onClick={() => setQuizType('mixed')}
-                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'mixed' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                                    >
-                                        Mixed
-                                    </button>
-                                    <button 
-                                        onClick={() => setQuizType('objective')}
-                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'objective' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                                    >
-                                        Objective
-                                    </button>
-                                    <button 
-                                        onClick={() => setQuizType('theory')}
-                                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'theory' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                                    >
-                                        Theory
-                                    </button>
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Quiz Preferences</span>
+                                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                                        <button 
+                                            onClick={() => setQuizType('mixed')}
+                                            className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'mixed' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                        >
+                                            Mixed
+                                        </button>
+                                        <button 
+                                            onClick={() => setQuizType('objective')}
+                                            className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'objective' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                        >
+                                            Objective
+                                        </button>
+                                        <button 
+                                            onClick={() => setQuizType('theory')}
+                                            className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${quizType === 'theory' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                                        >
+                                            Theory
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            value={topicFocus}
+                                            onChange={(e) => setTopicFocus(e.target.value)}
+                                            placeholder="Topic (e.g. AI)" 
+                                            className="w-32 bg-gray-100 dark:bg-gray-800 border-none rounded-lg text-[10px] font-bold px-3 py-1.5 focus:ring-1 focus:ring-blue-500 placeholder:text-gray-400"
+                                        />
+                                        <input 
+                                            type="number" 
+                                            value={questionCount}
+                                            onChange={(e) => setQuestionCount(e.target.value)}
+                                            placeholder="Auto Count" 
+                                            min="1"
+                                            max="50"
+                                            className="w-24 bg-gray-100 dark:bg-gray-800 border-none rounded-lg text-[10px] font-bold px-3 py-1.5 focus:ring-1 focus:ring-blue-500 placeholder:text-gray-400"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

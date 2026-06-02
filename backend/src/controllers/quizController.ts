@@ -65,7 +65,7 @@ const buildAdaptiveQuizConfig = (difficulty: QuizDifficulty) => {
 export const generateQuiz = async (req: any, res: any) => {
     const AI_URL = getAiUrl();
     try {
-        const { materialId, adaptiveScore, quizType } = req.body;
+        const { materialId, adaptiveScore, quizType, topicFocus, questionCount } = req.body;
         const userId = req.user.$id;
 
         console.log(`Using Database: ${DATABASE_ID}, Quiz Collection: ${COLLECTIONS.QUIZZES}`);
@@ -94,10 +94,10 @@ export const generateQuiz = async (req: any, res: any) => {
         const adaptiveDifficulty = getAdaptiveDifficulty(averageRecentScore);
         const adaptiveConfig = buildAdaptiveQuizConfig(adaptiveDifficulty);
         
-        // Override counts based on quizType
+        // Override counts based on quizType and user override
         let finalNumMcq = adaptiveConfig.num_mcq;
         let finalNumEssay = adaptiveConfig.num_essay;
-        const totalQuestions = finalNumMcq + finalNumEssay;
+        const totalQuestions = questionCount ? Math.min(50, Math.max(1, Number(questionCount))) : (finalNumMcq + finalNumEssay);
         
         if (quizType === 'objective') {
             finalNumMcq = totalQuestions;
@@ -105,8 +105,12 @@ export const generateQuiz = async (req: any, res: any) => {
         } else if (quizType === 'theory') {
             finalNumMcq = 0;
             finalNumEssay = totalQuestions;
+        } else if (questionCount) {
+            // If they provided a specific count for 'mixed', use roughly 70/30 split
+            finalNumMcq = Math.max(1, Math.floor(totalQuestions * 0.7));
+            finalNumEssay = totalQuestions - finalNumMcq;
         }
-        console.log(`Adaptive quiz mode for user ${userId} on course ${material.course_id}: ${adaptiveDifficulty} (avg score: ${averageRecentScore ?? 'n/a'})`);
+        console.log(`Adaptive quiz mode for user ${userId} on course ${material.course_id}: ${adaptiveDifficulty} (avg score: ${averageRecentScore ?? 'n/a'}). Topic: ${topicFocus || 'General'}. Count: ${totalQuestions}`);
         
         // --- 1. AI Service Discovery & Warm-up ---
         let finalAiUrl = AI_URL;
@@ -199,6 +203,7 @@ export const generateQuiz = async (req: any, res: any) => {
             num_mcq: finalNumMcq,
             num_essay: finalNumEssay,
             num_questions: finalNumMcq + finalNumEssay,
+            topicFocus: topicFocus,
             difficulty: adaptiveDifficulty,
             performance_score: averageRecentScore,
             adaptive_guidance: adaptiveConfig.guidance

@@ -529,9 +529,10 @@ async def generate_quiz(data: dict):
         difficulty = str(data.get("difficulty", "medium")).lower()
         performance_score = data.get("performance_score")
         adaptive_guidance = data.get("adaptive_guidance", "")
+        topic_focus = data.get("topicFocus", "")
         
         print(f"--- Quiz Generation Request Received ---")
-        print(f"Text length: {len(text)} characters. Targets: {num_mcq} MCQ, {num_essay} Essay")
+        print(f"Text length: {len(text)} characters. Targets: {num_mcq} MCQ, {num_essay} Essay. Topic Focus: {topic_focus or 'None'}")
         
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
@@ -550,6 +551,8 @@ async def generate_quiz(data: dict):
         if adaptive_guidance:
             selected_guidance = f"{selected_guidance} Additional guidance: {adaptive_guidance}"
 
+        topic_instruction = f"IMPORTANT FOCUS: Ensure all generated questions strictly relate to or cover the topic of '{topic_focus}'. If the text mentions '{topic_focus}', aggressively target that area. " if topic_focus else ""
+
         performance_note = f"The learner's recent performance score is {performance_score}%. " if performance_score is not None else "No recent performance score is available. "
 
         # --- Premium Google Gemini Path ---
@@ -563,6 +566,7 @@ async def generate_quiz(data: dict):
                 Adaptive difficulty mode: {difficulty.upper()}.
                 {performance_note}
                 Use this teaching style: {selected_guidance}
+                {topic_instruction}
                 
                 For MCQs:
                 - The questions must be deep, conceptual, and check real-world logic or application.
