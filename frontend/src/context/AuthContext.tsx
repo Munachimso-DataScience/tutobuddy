@@ -123,6 +123,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Poll for session propagation to overcome Appwrite read replica lag
             let sessionVerified = false;
+            const backupCookie = typeof localStorage !== 'undefined' ? localStorage.getItem('cookieFallback') : null;
+
             for (let i = 0; i < 5; i++) {
                 await sleep(1000);
                 try {
@@ -133,6 +135,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 } catch (e) {
                     console.log(`Waiting for session to propagate... (Attempt ${i + 1})`);
+                    // IMPORTANT: Appwrite SDK wipes the fallback cookie on ANY 401 error.
+                    // If this poll hits a lagging read replica, it will wipe the cookie and doom all future requests!
+                    // We must restore it here.
+                    if (backupCookie && typeof localStorage !== 'undefined') {
+                        localStorage.setItem('cookieFallback', backupCookie);
+                    }
                 }
             }
 

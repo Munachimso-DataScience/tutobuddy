@@ -37,6 +37,8 @@ export const getCachedJWT = async (): Promise<string> => {
         // Appwrite Cloud can take a moment to fully attach a fresh session.
         // Retry a few times before giving up so we do not cache a guest-state failure.
         const retryDelays = [800, 1200, 1800];
+        const backupCookie = typeof localStorage !== 'undefined' ? localStorage.getItem('cookieFallback') : null;
+
         for (const delay of retryDelays) {
             await sleep(delay);
             try {
@@ -46,6 +48,9 @@ export const getCachedJWT = async (): Promise<string> => {
                 return cachedJWT;
             } catch (retryError) {
                 console.warn('JWT retry failed, trying again...', retryError);
+                if (backupCookie && typeof localStorage !== 'undefined') {
+                    localStorage.setItem('cookieFallback', backupCookie);
+                }
             }
         }
 
