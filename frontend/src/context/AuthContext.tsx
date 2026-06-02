@@ -95,20 +95,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Attempting login for:', email);
         try {
             clearCachedJWT();
+
+            // Proactively check for and clear any existing session first
+            try {
+                const existingUser = await account.get();
+                console.log('Found existing session for:', existingUser.email, '— clearing it before fresh login.');
+                await account.deleteSession('current');
+                // Brief wait for Appwrite to finalize session deletion
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch {
+                // No existing session — proceed normally
+            }
+
             try {
                 await account.createEmailPasswordSession(email, pass);
                 console.log('Session created successfully');
             } catch (error: unknown) {
                 const loginError = error as { code?: number; type?: string; message?: string };
-                // 409 means session already exists.
-                // Note: Appwrite SDK might return code 409 or a specific type.
-                if (loginError.code === 409 || loginError.type === 'user_session_already_exists') {
-                    console.log('Session already exists, clearing old session...');
+                // 409 = session already exists, 401 = stale/conflicting session
+                if (loginError.code === 409 || loginError.code === 401 || loginError.type === 'user_session_already_exists') {
+                    console.log('Session conflict detected (code:', loginError.code, '), clearing and retrying...');
                     try {
                         await account.deleteSession('current');
                     } catch (e) {
                         console.warn('Could not delete current session:', e);
                     }
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     await account.createEmailPasswordSession(email, pass);
                     console.log('Session created after clearing');
                 } else {
