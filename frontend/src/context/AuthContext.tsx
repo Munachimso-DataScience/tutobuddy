@@ -6,7 +6,7 @@ import { account, clearCachedJWT, getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import { Models } from 'appwrite';
 
-type UserRole = 'student' | 'lecturer' | 'admin';
+type UserRole = 'student' | 'lecturer' | 'admin' | 'superadmin';
 
 type UserProfile = {
     role?: UserRole;

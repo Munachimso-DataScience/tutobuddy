@@ -91,7 +91,7 @@ export default function RegisterPage() {
             }
 
             toast.success('Account created successfully!');
-            router.push(role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
+            router.push(role === 'admin' || role === 'superadmin' ? '/dashboard/admin' : role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
         } catch (error: unknown) {
             const registrationError = error as { code?: number; message?: string };
             console.error('Registration Error:', registrationError);

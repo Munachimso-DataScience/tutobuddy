@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       const role = await login(email, password);
       toast.success('Welcome back!');
-      router.push(role === 'admin' ? '/dashboard/admin' : role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
+      router.push(role === 'admin' || role === 'superadmin' ? '/dashboard/admin' : role === 'lecturer' ? '/dashboard/lecturer' : '/dashboard');
     } catch (error: unknown) {
       const authError = error as { message?: string };
       toast.error(authError?.message || 'Login failed');

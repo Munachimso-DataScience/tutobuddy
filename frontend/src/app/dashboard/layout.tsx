@@ -76,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ...(role === 'lecturer'
             ? [{ icon: BarChart3, label: 'Lecturer View', href: '/dashboard/lecturer' }]
             : []),
-        ...(role === 'admin'
+        ...(role === 'admin' || role === 'superadmin'
             ? [{ icon: BarChart3, label: 'Admin View', href: '/dashboard/admin' }]
             : []),
     ];

@@ -106,12 +106,14 @@ async function getUserStats() {
                     acc.lecturer += 1;
                 } else if (role === 'admin') {
                     acc.admin += 1;
+                } else if (role === 'superadmin') {
+                    acc.superadmin += 1;
                 } else {
                     acc.student += 1;
                 }
                 return acc;
             },
-            { student: 0, lecturer: 0, admin: 0 }
+            { student: 0, lecturer: 0, admin: 0, superadmin: 0 }
         );
 
         const streakDistribution = users.reduce(
@@ -200,7 +202,7 @@ async function getUserStats() {
             total_users: 0,
             active_users: 0,
             active_rate: 0,
-            role_breakdown: { student: 0, lecturer: 0, admin: 0 },
+            role_breakdown: { student: 0, lecturer: 0, admin: 0, superadmin: 0 },
             average_streak: 0,
             streak_distribution: { '0': 0, '1-3': 0, '4-7': 0, '8-14': 0, '15+': 0 },
             quiz_completion_rate: 0,
@@ -353,12 +355,28 @@ export const updateAdminUserRole = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { role, assigned_courses } = req.body;
+        const currentUserRole = (req as any).userRole;
         
         const updateData: any = {};
         if (role) {
-            if (!['student', 'lecturer', 'admin'].includes(role)) {
+            if (!['student', 'lecturer', 'admin', 'superadmin'].includes(role)) {
                 return res.status(400).json({ error: 'Invalid role' });
             }
+
+            if (currentUserRole !== 'superadmin') {
+                if (role === 'superadmin') {
+                    return res.status(403).json({ error: 'Only superadmins can promote users to superadmin.' });
+                }
+                try {
+                    const targetUser = await databases.getDocument(DATABASE_ID, COLLECTIONS.USERS, id);
+                    if (targetUser.role === 'superadmin') {
+                        return res.status(403).json({ error: 'Admins cannot modify superadmin accounts.' });
+                    }
+                } catch (e) {
+                    return res.status(404).json({ error: 'Target user not found.' });
+                }
+            }
+
             updateData.role = role;
         }
         

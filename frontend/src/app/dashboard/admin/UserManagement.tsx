@@ -6,6 +6,7 @@ import { getCachedJWT } from '@/lib/appwrite';
 import { API_URL } from '@/lib/api';
 import { Loader2, Trash2, Edit } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useAuth } from '@/context/AuthContext';
 
 type User = {
     $id: string;
@@ -22,6 +23,7 @@ type User = {
 export default function UserManagement() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const { role: currentUserRole } = useAuth();
 
     const loadUsers = async () => {
         try {
@@ -51,8 +53,8 @@ export default function UserManagement() {
             });
             toast.success("Role updated");
             loadUsers();
-        } catch (error) {
-            toast.error("Failed to update role");
+        } catch (error: any) {
+            toast.error(error?.response?.data?.error || "Failed to update role");
         }
     };
 
@@ -117,6 +119,9 @@ export default function UserManagement() {
                                             <option value="student">Student</option>
                                             <option value="lecturer">Lecturer</option>
                                             <option value="admin">Admin</option>
+                                            {currentUserRole === 'superadmin' && (
+                                                <option value="superadmin">Superadmin</option>
+                                            )}
                                         </select>
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground text-xs">

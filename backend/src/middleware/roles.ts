@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 
-export type UserRole = 'student' | 'lecturer' | 'admin';
+export type UserRole = 'student' | 'lecturer' | 'admin' | 'superadmin';
 
 export const requireRoles = (...allowedRoles: UserRole[]) => {
     return (req: any, res: Response, next: NextFunction) => {

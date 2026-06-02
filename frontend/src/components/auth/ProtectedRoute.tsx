@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-type AllowedRole = 'student' | 'lecturer' | 'admin';
+type AllowedRole = 'student' | 'lecturer' | 'admin' | 'superadmin';
 
 export default function ProtectedRoute({
     children,
