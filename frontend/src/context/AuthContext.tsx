@@ -27,7 +27,7 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, pass: string) => Promise<UserRole>;
     logout: () => Promise<void>;
-    checkUser: () => Promise<UserRole>;
+    checkUser: () => Promise<UserRole | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const checkUser = async (): Promise<UserRole> => {
+    const checkUser = async (): Promise<UserRole | null> => {
         try {
             console.log('Checking for active session...');
             const currentUser = await account.get();
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
             setProfile(null);
             setRole('student');
-            return 'student';
+            return null;
         } finally {
             setLoading(false);
         }
@@ -121,10 +121,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
             
-            // Allow a tiny delay for Appwrite read replica to catch up with the session creation
-            await sleep(800);
+            // Poll for session propagation to overcome Appwrite read replica lag
+            let sessionVerified = false;
+            for (let i = 0; i < 5; i++) {
+                await sleep(1000);
+                try {
+                    const check = await account.get();
+                    if (check) {
+                        sessionVerified = true;
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`Waiting for session to propagate... (Attempt ${i + 1})`);
+                }
+            }
+
+            if (!sessionVerified) {
+                throw new Error("Session creation timeout. Please ensure third-party cookies are enabled or try again.");
+            }
+
             const resolvedRole = await checkUser();
-            return resolvedRole || 'student';
+            if (!resolvedRole) {
+                throw new Error("Failed to load user profile after login.");
+            }
+            return resolvedRole;
 
         } catch (error: any) {
             clearCachedJWT();
