@@ -83,7 +83,10 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
 
                 <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-1 rounded-md">
+                        <span 
+                            className="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-1 rounded-md truncate max-w-[140px] sm:max-w-[200px] inline-block"
+                            title={course.code}
+                        >
                             {course.code}
                         </span>
                     </div>
