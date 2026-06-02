@@ -442,7 +442,7 @@ export default function LecturerDashboard() {
                     <div className="mt-6 grid gap-4 lg:grid-cols-3">
                         <Card>
                             <h3 className="font-semibold mb-3">Study Minutes Trend</h3>
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
                                 {trendData.length > 0 ? trendData.map((point) => (
                                     <div key={point.date} className="space-y-1">
                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -461,7 +461,7 @@ export default function LecturerDashboard() {
                         </Card>
                         <Card>
                             <h3 className="font-semibold mb-3">Average Score Trend</h3>
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
                                 {trendData.length > 0 ? trendData.map((point) => (
                                     <div key={point.date} className="space-y-1">
                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -480,7 +480,7 @@ export default function LecturerDashboard() {
                         </Card>
                         <Card>
                             <h3 className="font-semibold mb-3">Readiness Trend</h3>
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
                                 {trendData.length > 0 ? trendData.map((point) => (
                                     <div key={point.date} className="space-y-1">
                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -512,7 +512,21 @@ export default function LecturerDashboard() {
                                     </div>
                                     <div>
                                         <label className="mb-1 block text-sm font-medium">Code</label>
-                                        <input value={offeringCode} onChange={(e) => setOfferingCode(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. MTH101" required />
+                                        {(summary?.lecturer?.assigned_courses || []).length > 0 ? (
+                                            <select
+                                                value={offeringCode}
+                                                onChange={(e) => setOfferingCode(e.target.value)}
+                                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                                                required
+                                            >
+                                                <option value="" disabled>Select assigned course</option>
+                                                {summary?.lecturer?.assigned_courses?.map((course) => (
+                                                    <option key={course} value={course}>{course}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input value={offeringCode} onChange={(e) => setOfferingCode(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. MTH101" required />
+                                        )}
                                     </div>
                                 </div>
                                 <div>
@@ -617,11 +631,11 @@ export default function LecturerDashboard() {
                 <TabsContent value="classes">
                     <div className="grid gap-4">
                         {(summary?.performance?.class_stats || []).length > 0 ? (
-                            summary?.performance?.class_stats?.map((group) => (
+                            summary?.performance?.class_stats?.filter(g => g.name && g.name !== 'Unassigned').map((group) => (
                                 <Card key={group.name}>
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                         <div>
-                                            <h3 className="text-lg font-semibold">{group.name || 'Unassigned'}</h3>
+                                            <h3 className="text-lg font-semibold">{group.name}</h3>
                                             <p className="text-sm text-muted-foreground">
                                                 {group.students ?? 0} students, {group.quizzes ?? 0} quizzes
                                             </p>
