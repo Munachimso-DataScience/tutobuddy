@@ -511,9 +511,11 @@ export default function LecturerDashboard() {
                                         <input value={offeringTitle} onChange={(e) => setOfferingTitle(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. Calculus I" required />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium">Code</label>
+                                        <label htmlFor="offeringCodeInput" className="mb-1 block text-sm font-medium">Code</label>
                                         {(summary?.lecturer?.assigned_courses || []).length > 0 ? (
                                             <select
+                                                id="offeringCodeInput"
+                                                title="Course Offering Code"
                                                 value={offeringCode}
                                                 onChange={(e) => setOfferingCode(e.target.value)}
                                                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -525,7 +527,7 @@ export default function LecturerDashboard() {
                                                 ))}
                                             </select>
                                         ) : (
-                                            <input value={offeringCode} onChange={(e) => setOfferingCode(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. MTH101" required />
+                                            <input id="offeringCodeInput" title="Course Offering Code" value={offeringCode} onChange={(e) => setOfferingCode(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. MTH101" required />
                                         )}
                                     </div>
                                 </div>
