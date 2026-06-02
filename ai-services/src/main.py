@@ -492,19 +492,19 @@ async def extract_text(file: UploadFile = File(...)):
                     page_text = reader.pages[i].extract_text() or ""
                     pages_content.append(page_text)
                     total_chars += len(page_text)
-                    if total_chars > 30000: break
+                    if total_chars > 15000: break
                 
-                return {"text": "".join(pages_content)[:30000]}
+                return {"text": "".join(pages_content)[:15000]}
                 
             elif filename.endswith('.docx'):
                 import docx
                 doc = docx.Document(tmp_path)
                 text = "\n".join([para.text for para in doc.paragraphs])
-                return {"text": text[:30000]}
+                return {"text": text[:15000]}
                 
             elif filename.endswith('.txt'):
                 with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    return {"text": f.read(30000)}
+                    return {"text": f.read(15000)}
             else:
                 raise HTTPException(status_code=400, detail="Unsupported format")
         
@@ -524,6 +524,9 @@ async def generate_quiz(data: dict):
     gc.collect() # Clean up before starting
     try:
         text = data.get("text", "")
+        max_chars = 15000
+        if len(text) > max_chars:
+            text = text[:max_chars] + "... [Content Truncated]"
         num_requested = data.get("num_questions", 35) # Default total 35
         num_mcq = data.get("num_mcq", 30)
         num_essay = data.get("num_essay", 5)
@@ -542,9 +545,9 @@ async def generate_quiz(data: dict):
             raise HTTPException(status_code=400, detail="No text provided")
  
         # Lowered limit for better stability on free tier
-        if len(text) > 30000:
+        if len(text) > 15000:
             print(f"Truncating text from {len(text)} to 30,000 chars for performance.")
-            text = text[:30000]
+            text = text[:15000]
 
         difficulty_guidance = {
             "easy": "revision mode: create simpler questions, clearer wording, more direct recall, and foundational reinforcement.",
@@ -1331,19 +1334,19 @@ async def extract_text(file: UploadFile = File(...)):
                     page_text = reader.pages[i].extract_text() or ""
                     pages_content.append(page_text)
                     total_chars += len(page_text)
-                    if total_chars > 30000: break
+                    if total_chars > 15000: break
                 
-                return {"text": "".join(pages_content)[:30000]}
+                return {"text": "".join(pages_content)[:15000]}
                 
             elif filename.endswith('.docx'):
                 import docx
                 doc = docx.Document(tmp_path)
                 text = "\n".join([para.text for para in doc.paragraphs])
-                return {"text": text[:30000]}
+                return {"text": text[:15000]}
                 
             elif filename.endswith('.txt'):
                 with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    return {"text": f.read(30000)}
+                    return {"text": f.read(15000)}
             else:
                 raise HTTPException(status_code=400, detail="Unsupported format")
         
@@ -1363,6 +1366,9 @@ async def generate_quiz(data: dict):
     gc.collect() # Clean up before starting
     try:
         text = data.get("text", "")
+        max_chars = 15000
+        if len(text) > max_chars:
+            text = text[:max_chars] + "... [Content Truncated]"
         num_requested = data.get("num_questions", 35) # Default total 35
         num_mcq = data.get("num_mcq", 30)
         num_essay = data.get("num_essay", 5)
@@ -1374,9 +1380,9 @@ async def generate_quiz(data: dict):
             raise HTTPException(status_code=400, detail="No text provided")
  
         # Lowered limit for better stability on free tier
-        if len(text) > 30000:
+        if len(text) > 15000:
             print(f"Truncating text from {len(text)} to 30,000 chars for performance.")
-            text = text[:30000]
+            text = text[:15000]
 
         # --- Premium Google Gemini Path ---
         if groq_available:
@@ -1904,6 +1910,10 @@ async def summarize(data: dict):
         if not text:
             raise HTTPException(status_code=400, detail="No text provided")
             
+        max_chars = 15000
+        if len(text) > max_chars:
+            text = text[:max_chars] + "... [Content Truncated]"
+            
         if groq_available:
             print("Generating Premium Groq Summary...")
             try:
@@ -2256,7 +2266,7 @@ async def chat_material(data: dict):
             raise HTTPException(status_code=400, detail="Missing text or question")
             
         # Limit context to avoid hitting token limits for very large PDFs
-        max_chars = 30000
+        max_chars = 15000
         if len(context_text) > max_chars:
             context_text = context_text[:max_chars] + "... [Content Truncated]"
 
