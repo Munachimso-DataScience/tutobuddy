@@ -99,58 +99,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearCachedJWT();
 
             try {
+                // Preemptively check and delete any stale session
+                const existing = await account.get();
+                if (existing) {
+                    await account.deleteSession('current');
+                }
+            } catch (e) {
+                // Expected if not logged in
+            }
+
+            try {
                 await account.createEmailPasswordSession(email, pass);
                 console.log('Session created successfully');
-            } catch (error: unknown) {
-                const loginError = error as { code?: number; type?: string; message?: string };
-                // 409 = session already exists, 401 = stale/conflicting session
-                if (loginError.code === 409 || loginError.code === 401 || loginError.type === 'user_session_already_exists') {
-                    console.log('Session conflict detected (code:', loginError.code, '), clearing and retrying...');
-                    try {
-                        await account.deleteSession('current');
-                    } catch (e) {
-                        console.warn('Could not delete current session:', e);
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await account.createEmailPasswordSession(email, pass);
-                    console.log('Session created after clearing');
+            } catch (error: any) {
+                // 409 = session already exists, we can proceed
+                if (error?.code === 409 || error?.type === 'user_session_already_exists') {
+                    console.log('Session already exists, proceeding...');
                 } else {
-                    console.error('Appwrite login error:', loginError.message, loginError.type, loginError.code);
+                    console.error('Appwrite login error:', error?.message);
                     throw error;
                 }
             }
             
-            // Fix for Appwrite Cloud replication lag & localStorage fallback race condition.
-            // When a session is created, read replicas can take a few seconds to accept it.
-            // Retry longer before giving up so the session has time to settle.
-            let resolvedRole: 'student' | 'lecturer' | 'admin' | null = null;
-            let retryCount = 0;
-            const maxRetries = 10;
-            let currentUser = null;
-            
-            while (retryCount < maxRetries) {
-                const delay = Math.min(1000 + retryCount * 500, 3000);
-                await sleep(delay);
-                console.log(`Verifying session... (Attempt ${retryCount + 1}/${maxRetries})`);
-                
-                try {
-                    currentUser = await account.get();
-                    if (currentUser) {
-                        resolvedRole = await checkUser();
-                        break;
-                    }
-                } catch (e) {
-                    console.log('Session verification pending replica sync...', e);
-                }
-                retryCount++;
-            }
-
-            if (!currentUser) {
-                clearCachedJWT();
-                throw new Error("Session verification failed after multiple attempts. Please try logging in again.");
-            }
-            
+            // Allow a tiny delay for Appwrite read replica to catch up with the session creation
+            await sleep(800);
+            const resolvedRole = await checkUser();
             return resolvedRole || 'student';
+
+        } catch (error: any) {
+            clearCachedJWT();
+            throw new Error(error?.message || "Login failed. Please check your credentials and try again.");
         } finally {
             setLoading(false);
         }

@@ -102,12 +102,12 @@ export default function LoginPage() {
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Don&apos;t have an account?{' '}
-              <a href="/register" className="font-medium text-primary hover:text-secondary">
+              <a href="/register" className="font-medium text-primary dark:text-white hover:text-secondary dark:hover:text-gray-300">
                 Start learning for free
               </a>
             </p>
             <p className="text-sm mt-3">
-              <a href="/forgot-password" className="font-medium text-primary hover:text-secondary">
+              <a href="/forgot-password" className="font-medium text-primary dark:text-white hover:text-secondary dark:hover:text-gray-300">
                 Forgot password?
               </a>
             </p>
