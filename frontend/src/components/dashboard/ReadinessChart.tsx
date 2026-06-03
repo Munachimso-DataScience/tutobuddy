@@ -37,14 +37,15 @@ export default function ReadinessChart({ percentage }: ReadinessChartProps) {
                         <Label
                             value={`${percentage}%`}
                             position="centerBottom"
-                            className="text-2xl font-bold fill-gray-900 dark:fill-white"
+                            className="text-2xl font-bold"
+                            fill="currentColor"
                             dy={-20}
                         />
                     </Pie>
                 </PieChart>
             </ResponsiveContainer>
             <div className="absolute bottom-0 left-0 right-0 text-center">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Exam Readiness</p>
+                <p className="text-xs font-bold uppercase tracking-tighter opacity-80">Exam Readiness</p>
             </div>
         </div>
     );
