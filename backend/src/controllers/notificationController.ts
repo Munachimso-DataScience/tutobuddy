@@ -306,6 +306,10 @@ export const getNotifications = async (req: Request, res: Response) => {
             ])
         ]);
 
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(200).json({
             notifications: notifications.documents,
             unreadCount: unread.total
@@ -637,7 +641,7 @@ export const sendDailyStudySummaries = async (req: Request, res: Response) => {
 
                 await createInAppNotification({
                     userId: user.$id,
-                    title: 'Your daily study summary is ready',
+                    title: 'Your weekly study summary is ready',
                     message: `${studySummary.summaryText}${weaknesses.length > 0 ? ` Weak areas: ${weaknesses.join(', ')}.` : ''}`,
                     link: '/dashboard/reports',
                     type: 'summary',
@@ -653,9 +657,9 @@ export const sendDailyStudySummaries = async (req: Request, res: Response) => {
                 await transporter.sendMail({
                     from: smtpFromAddress,
                     to: user.email,
-                    subject: 'Your Daily Study Summary',
+                    subject: 'Your Weekly Study Summary',
                     html: `
-                        <h2>Daily Study Summary</h2>
+                        <h2>Weekly Study Summary</h2>
                         <p>Hello ${user.name},</p>
                         <p>${studySummary.summaryText}</p>
                         <ul>

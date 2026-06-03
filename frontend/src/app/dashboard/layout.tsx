@@ -20,7 +20,9 @@ import {
     Camera
 ,
     Check,
-    CheckCircle2} from 'lucide-react';
+    CheckCircle2,
+    GraduationCap
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -66,20 +68,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [unreadCount, setUnreadCount] = React.useState(0);
     const [loadingNotifications, setLoadingNotifications] = React.useState(false);
 
-    const navItems = [
-        { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-        { icon: BookOpen, label: "My Courses", href: "/dashboard/courses" },
-        { icon: Camera, label: "OCR Scanner", href: "/dashboard/ocr" },
-        { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
-        { icon: History, label: "Tasks", href: "/dashboard/tasks" },
-        { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
-        ...(role === 'lecturer'
-            ? [{ icon: BarChart3, label: 'Lecturer View', href: '/dashboard/lecturer' }]
-            : []),
-        ...(role === 'admin' || role === 'superadmin'
-            ? [{ icon: BarChart3, label: 'Admin View', href: '/dashboard/admin' }]
-            : []),
-    ];
+    const getNavItems = () => {
+        const ocrItem = { icon: Camera, label: "OCR Scanner", href: "/dashboard/ocr" };
+
+        if (role === 'admin' || role === 'superadmin') {
+            return [
+                { icon: LayoutDashboard, label: 'Admin Hub', href: '/dashboard/admin' },
+                { icon: UserCircle, label: 'User Management', href: '/dashboard/admin?tab=users' },
+                ocrItem,
+            ];
+        }
+
+        if (role === 'lecturer') {
+            return [
+                { icon: LayoutDashboard, label: 'Lecturer Hub', href: '/dashboard/lecturer' },
+                { icon: BookOpen, label: 'Manage Classes', href: '/dashboard/lecturer/classes' },
+                ocrItem,
+            ];
+        }
+
+        // Default Student Navigation
+        return [
+            { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+            { icon: GraduationCap, label: "My Classes", href: "/dashboard/classes" },
+            { icon: BookOpen, label: "Personal Study Spaces", href: "/dashboard/courses" },
+            ocrItem,
+            { icon: ClipboardList, label: "Schedule", href: "/dashboard/schedule" },
+            { icon: History, label: "Tasks", href: "/dashboard/tasks" },
+            { icon: BarChart3, label: "Reports", href: "/dashboard/reports" },
+        ];
+    };
+
+    const navItems = getNavItems();
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -89,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         try {
             setLoadingNotifications(true);
             const jwt = await getCachedJWT();
-            const res = await axios.get(`${API_URL}/api/notifications`, {
+            const res = await axios.get(`${API_URL}/api/notifications?_t=${Date.now()}`, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             setNotifications(res.data.notifications || []);
@@ -288,29 +308,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </button>
                             {showNotifications && (
                                 <div className="absolute right-4 top-16 z-50 w-80 rounded-3xl border border-primary/10 bg-surface/95 dark:bg-surface-2/95 p-4 shadow-2xl shadow-black/10 backdrop-blur-xl">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div>
-                                            <p className="text-sm font-bold text-foreground dark:text-cream">Notifications</p>
-                                            <p className="text-xs text-foreground/50 dark:text-cream/50">Your study reminders, reports, and course alerts</p>
-                                        </div>
-                                        {unreadCount > 0 && (
-                                            <button 
-                                                onClick={handleMarkAllRead}
-                                                className="absolute bottom-3 right-4 text-[10px] font-bold text-secondary hover:text-secondary/80 flex items-center gap-1"
-                                            >
-                                                <CheckCircle2 className="h-3 w-3" /> Mark all read
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowNotifications(false)}
-                                            aria-label="Close notifications"
-                                            title="Close notifications"
-                                            className="text-foreground/40 hover:text-foreground dark:text-cream/40 dark:hover:text-cream"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    </div>
+                                      <div className="flex items-start justify-between mb-3">
+                                          <div>
+                                              <p className="text-sm font-bold text-foreground dark:text-cream">Notifications</p>
+                                              <p className="text-xs text-foreground/50 dark:text-cream/50 mt-1">Your study reminders, reports, and course alerts</p>
+                                          </div>
+                                          <div className="flex flex-col items-end gap-2">
+                                              <button
+                                                  type="button"
+                                                  onClick={() => setShowNotifications(false)}
+                                                  aria-label="Close notifications"
+                                                  title="Close notifications"
+                                                  className="text-foreground/40 hover:text-foreground dark:text-cream/40 dark:hover:text-cream"
+                                              >
+                                                  <X className="h-4 w-4" />
+                                              </button>
+                                              {unreadCount > 0 && (
+                                                  <button 
+                                                      onClick={handleMarkAllRead}
+                                                      className="text-[10px] font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full transition-all"
+                                                  >
+                                                      <CheckCircle2 className="h-3 w-3" /> Mark all read
+                                                  </button>
+                                              )}
+                                          </div>
+                                      </div>
                                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                                         {loadingNotifications ? (
                                             <div className="rounded-2xl border border-primary/10 bg-background/70 dark:bg-background/20 px-3 py-2 text-sm text-foreground/60 dark:text-cream/60">
