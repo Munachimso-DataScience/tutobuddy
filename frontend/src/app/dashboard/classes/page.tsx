@@ -80,7 +80,7 @@ export default function StudentClasses() {
             {classes.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {classes.map((cls) => (
-                        <Link key={cls.$id} href={`/dashboard/classes/${cls.$id}`}>
+                        <Link key={cls.$id} href={cls.private_course_id ? `/dashboard/courses/${cls.private_course_id}` : '#'}>
                             <Card className="h-full cursor-pointer transition-all hover:border-secondary/50 hover:shadow-md flex flex-col">
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="font-bold text-lg leading-tight">{cls.title || 'Untitled Class'}</h3>

@@ -122,7 +122,26 @@ export const getStudentClasses = async (req: any, res: any) => {
             for (const id of uniqueOfferingIds) {
                 try {
                     const offering = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSE_OFFERINGS, id as string);
-                    offerings.push(offering);
+                    
+                    // Attempt to find the matching private course workspace for this student
+                    let privateCourseId = null;
+                    try {
+                        const coursesResponse = await databases.listDocuments(DATABASE_ID, COLLECTIONS.COURSES, [
+                            Query.equal('student_id', studentId),
+                            Query.equal('title', offering.title)
+                        ]);
+                        
+                        if (coursesResponse.documents.length > 0) {
+                            privateCourseId = coursesResponse.documents[0].$id;
+                        }
+                    } catch (err) {
+                        console.warn(`Could not find private course for offering ${id}`);
+                    }
+                    
+                    offerings.push({
+                        ...offering,
+                        private_course_id: privateCourseId
+                    });
                 } catch (e) {
                     console.warn(`Could not fetch offering ${id}`);
                 }
