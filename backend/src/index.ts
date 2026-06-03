@@ -9,14 +9,14 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { authMiddleware } from './middleware/auth';
 import { requireRoles } from './middleware/roles';
-import { createCourse, getCourses, deleteCourse } from './controllers/courseController';
+import { createCourse, getCourses, deleteCourse, getStudentClasses } from './controllers/courseController';
 import { uploadMaterial, getMaterials, deleteMaterial, getMaterialText, summarizeMaterial, chatWithMaterial } from './controllers/materialController';
 import { logActivity, getStats } from './controllers/activityController';
 import { generateQuiz, getQuizzes, updateQuizScore } from './controllers/quizController';
 import { evaluateEssay, evaluateHandwrittenAnswer } from './controllers/essayController';
 import { evaluateOcr } from './controllers/ocrController';
 import { getExplanation, getHint } from './controllers/feedbackController';
-import { checkInactivity, generateWeeklyReports, getNotifications, getSmtpStatus, markNotificationRead, sendDailyStudySummaries, sendStudySessionReminders, sendTestEmail } from './controllers/notificationController';
+import { checkInactivity, generateWeeklyReports, getNotifications, getSmtpStatus, markNotificationRead, markAllNotificationsRead, sendDailyStudySummaries, sendStudySessionReminders, sendTestEmail } from './controllers/notificationController';
 import { getWeaknessAnalysis } from './controllers/analyticsController';
 import { getLeaderboard } from './controllers/leaderboardController';
 import { getTasks, createTask, updateTaskStatus, deleteTask } from './controllers/taskController';
@@ -99,6 +99,8 @@ app.post('/api/courses', authMiddleware, upload.single('file'), createCourse);
 app.get('/api/courses', authMiddleware, getCourses);
 app.delete('/api/courses/:id', authMiddleware, deleteCourse);
 
+app.get('/api/student/classes', authMiddleware, requireRoles('student', 'admin', 'superadmin'), getStudentClasses);
+
 // Material Routes
 app.post('/api/materials/upload', authMiddleware, upload.single('file'), uploadMaterial);
 app.get('/api/materials/:courseId', authMiddleware, getMaterials);
@@ -127,6 +129,7 @@ app.post('/api/feedback/hint', authMiddleware, getHint);
 
 // Notification Routes
 app.get('/api/notifications', authMiddleware, getNotifications);
+app.post('/api/notifications/read-all', authMiddleware, markAllNotificationsRead);
 app.patch('/api/notifications/:id/read', authMiddleware, markNotificationRead);
 app.get('/api/notifications/smtp-status', getSmtpStatus);
 app.post('/api/notifications/test-email', authMiddleware, sendTestEmail);

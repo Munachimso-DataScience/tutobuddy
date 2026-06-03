@@ -350,6 +350,37 @@ export const markNotificationRead = async (req: Request, res: Response) => {
     }
 };
 
+export const markAllNotificationsRead = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.$id;
+        
+        // Fetch all unread notifications for this user
+        const unread = await databases.listDocuments(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, [
+            Query.equal('user_id', userId),
+            Query.equal('is_read', false),
+            Query.limit(50)
+        ]);
+
+        if (unread.total === 0) {
+            return res.status(200).json({ message: 'No unread notifications.' });
+        }
+
+        // Update all unread notifications
+        const updatePromises = unread.documents.map(doc => 
+            databases.updateDocument(DATABASE_ID, COLLECTIONS.NOTIFICATIONS, doc.$id, {
+                is_read: true
+            }).catch(e => console.error(`Failed to bulk update notification ${doc.$id}:`, e))
+        );
+
+        await Promise.all(updatePromises);
+        
+        return res.status(200).json({ message: `Successfully marked ${unread.total} notifications as read.` });
+    } catch (error: any) {
+        console.error('Mark all notifications read error:', error.message);
+        return res.status(500).json({ error: error.message });
+    }
+};
+
 export const getSmtpStatus = async (_req: Request, res: Response) => {
     return res.status(200).json({
         ...smtpStatus,

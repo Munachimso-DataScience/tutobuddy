@@ -189,13 +189,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         try {
             const jwt = await getCachedJWT();
-            await Promise.all(
-                unread.map(n => 
-                    axios.patch(`${API_URL}/api/notifications/${n.$id}/read`, {}, {
-                        headers: { Authorization: `Bearer ${jwt}` }
-                    })
-                )
-            );
+            await axios.post(`${API_URL}/api/notifications/read-all`, {}, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
         } catch {
             fetchNotifications(); // revert on failure
         }
