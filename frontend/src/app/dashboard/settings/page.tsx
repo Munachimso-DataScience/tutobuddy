@@ -100,17 +100,27 @@ const ToggleRow = ({
 );
 
 export default function SettingsPage() {
-    const { user, checkUser } = useAuth();
+    const { user, profile, checkUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [smtpLoading, setSmtpLoading] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<{ configured: boolean; ready?: boolean; host?: string; fromEmail?: string } | null>(null);
-    const showSmtpStatusCard = true;
+    const showSmtpStatusCard = false;
     const [theme, setTheme] = useState<ThemeMode>('dark');
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [studyReminders, setStudyReminders] = useState(true);
     const [weeklySummary, setWeeklySummary] = useState(true);
     const [privacyMode, setPrivacyMode] = useState(false);
+
+    const [department, setDepartment] = useState('');
+    const [classGroup, setClassGroup] = useState('');
+
+    useEffect(() => {
+        if (profile) {
+            setDepartment(profile.department || '');
+            setClassGroup(profile.class_group || '');
+        }
+    }, [profile]);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
@@ -174,33 +184,45 @@ export default function SettingsPage() {
         return `${enabled} active preference${enabled === 1 ? '' : 's'}`;
     }, [emailAlerts, studyReminders, weeklySummary, privacyMode]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setLoading(true);
 
-        setTimeout(() => {
-            try {
-                localStorage.setItem(
-                    NOTIFICATION_STORAGE_KEY,
-                    JSON.stringify({
-                        emailAlerts,
-                        studyReminders,
-                        weeklySummary,
-                        privacyMode
-                    })
-                );
-            } catch {
-                // ignore localStorage failures
-            }
+        try {
+            // Save local preferences
+            localStorage.setItem(
+                NOTIFICATION_STORAGE_KEY,
+                JSON.stringify({
+                    emailAlerts,
+                    studyReminders,
+                    weeklySummary,
+                    privacyMode
+                })
+            );
+
+            // Update profile on backend
+            const jwt = await getCachedJWT();
+            await axios.patch(`${API_URL}/api/profile/update`, {
+                department: department || undefined,
+                class_group: classGroup || undefined
+            }, {
+                headers: { Authorization: `Bearer ${jwt}` }
+            });
+
+            await checkUser(); // Refresh the context
 
             if ('Notification' in window && Notification.permission === 'granted') {
                 new Notification('TutorBuddy settings saved', {
-                    body: 'Your notification preferences have been updated successfully.'
+                    body: 'Your profile and preferences have been updated successfully.'
                 });
             }
 
-            setLoading(false);
             toast.success('Settings saved successfully!');
-        }, 700);
+        } catch (error: any) {
+            console.error('Failed to save settings:', error);
+            toast.error(error.response?.data?.error || 'Failed to update profile settings.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleTestEmail = async () => {
@@ -333,7 +355,8 @@ export default function SettingsPage() {
                                     type="text"
                                     defaultValue={user?.name || ''}
                                     title="Full Name"
-                                    className="w-full rounded-xl border-none bg-background/70 px-4 py-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-secondary dark:bg-background/20"
+                                    readOnly
+                                    className="w-full rounded-xl border border-primary/10 bg-background/50 px-4 py-3 font-medium text-foreground outline-none cursor-not-allowed opacity-70 dark:bg-background/10"
                                 />
                             </div>
                             <div className="space-y-1">
@@ -347,6 +370,33 @@ export default function SettingsPage() {
                                 />
                             </div>
                         </div>
+
+                        {profile?.role === 'student' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/50">Department</label>
+                                    <input
+                                        type="text"
+                                        value={department}
+                                        onChange={(e) => setDepartment(e.target.value)}
+                                        placeholder="e.g. Computer Science"
+                                        title="Department"
+                                        className="w-full rounded-xl border-none bg-background/70 px-4 py-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-secondary dark:bg-background/20"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/50">Class Group / Level</label>
+                                    <input
+                                        type="text"
+                                        value={classGroup}
+                                        onChange={(e) => setClassGroup(e.target.value)}
+                                        placeholder="e.g. 500 Level"
+                                        title="Class Group"
+                                        className="w-full rounded-xl border-none bg-background/70 px-4 py-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-secondary dark:bg-background/20"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
@@ -452,7 +502,7 @@ export default function SettingsPage() {
                         </p>
                         <button
                             type="button"
-                            className="mt-6 flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-secondary shadow-lg transition-all hover:bg-cream"
+                            className="mt-6 flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-blue-700"
                             onClick={handleSave}
                             disabled={loading}
                         >
@@ -461,47 +511,7 @@ export default function SettingsPage() {
                         </button>
                     </div>
 
-                    {showSmtpStatusCard && (
-                    <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div>
-                                <p className="text-sm font-bold text-foreground dark:text-cream">Brevo SMTP Status</p>
-                                <p className="text-xs text-foreground/55 dark:text-cream/55">Check whether your SMTP settings are ready.</p>
-                            </div>
-                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${smtpStatus?.configured ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
-                                {smtpStatus?.configured ? 'Connected' : 'Not Configured'}
-                            </span>
-                        </div>
-                        <div className="space-y-2 text-xs text-foreground/60 dark:text-cream/60">
-                            <p>Host: {smtpStatus?.host || 'smtp-relay.brevo.com'}</p>
-                            <p>Sender: {smtpStatus?.fromEmail || 'Not set yet'}</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleTestEmail}
-                            disabled={smtpLoading || !smtpStatus?.configured}
-                            className="mt-4 flex w-full items-center justify-center rounded-2xl border border-primary/10 bg-background/70 px-4 py-3 text-sm font-bold text-foreground transition-all hover:border-secondary/30 hover:bg-surface/90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-background/20 dark:text-cream"
-                        >
-                            {smtpLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4 text-secondary" />}
-                            Send Test Email
-                        </button>
-                    </div>
-                    )}
-
-                    <div className="rounded-3xl border border-primary/10 bg-surface/90 dark:bg-surface-2/90 p-6 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:text-cream">
-                                <Globe className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-foreground dark:text-cream">Language</p>
-                                <p className="text-xs text-foreground/55 dark:text-cream/55">English (Nigeria)</p>
-                            </div>
-                        </div>
-                        <div className="mt-4 rounded-2xl border border-dashed border-primary/15 bg-background/60 p-4 text-sm text-foreground/60 dark:bg-background/15">
-                            More account and study controls can be added here later — notifications, accessibility, backup, and exam mode.
-                        </div>
-                    </div>
+                    {/* Removed Brevo SMTP and Language cards as requested */}
                 </div>
             </div>
         </div>
