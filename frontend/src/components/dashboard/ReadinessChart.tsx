@@ -37,8 +37,7 @@ export default function ReadinessChart({ percentage }: ReadinessChartProps) {
                         <Label
                             value={`${percentage}%`}
                             position="centerBottom"
-                            className="text-2xl font-bold"
-                            fill="currentColor"
+                            className="text-2xl font-bold fill-current"
                             dy={-20}
                         />
                     </Pie>
