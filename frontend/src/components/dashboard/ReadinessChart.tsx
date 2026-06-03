@@ -5,9 +5,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Label } from 'recharts';
 
 interface ReadinessChartProps {
     percentage: number;
+    textWhite?: boolean;
 }
 
-export default function ReadinessChart({ percentage }: ReadinessChartProps) {
+export default function ReadinessChart({ percentage, textWhite = false }: ReadinessChartProps) {
     const data = [
         { name: 'Readiness', value: percentage },
         { name: 'Remaining', value: 100 - percentage },
@@ -37,7 +38,7 @@ export default function ReadinessChart({ percentage }: ReadinessChartProps) {
                         <Label
                             value={`${percentage}%`}
                             position="centerBottom"
-                            className="text-2xl font-bold fill-current"
+                            className={`text-2xl font-bold ${textWhite ? 'fill-white' : 'fill-gray-900 dark:fill-white'}`}
                             dy={-20}
                         />
                     </Pie>

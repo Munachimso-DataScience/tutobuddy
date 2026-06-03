@@ -259,7 +259,7 @@ export default function DashboardPage() {
                 <div className="space-y-8">
                     <div className="bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm flex flex-col items-center">
                         <div className="[&_*]:text-white dark:[&_*]:text-white">
-                            <ReadinessChart percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
+                            <ReadinessChart textWhite={true} percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
                         </div>
                         <div className="mt-4 text-center">
                             <p className="text-sm text-white/90 font-medium px-4">
