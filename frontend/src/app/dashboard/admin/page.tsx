@@ -11,6 +11,8 @@ import { getCachedJWT } from '@/lib/appwrite';
 import UserManagement from './UserManagement';
 import QuestionTemplateManagement from './QuestionTemplateManagement';
 import ContentManagement from './ContentManagement';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 type AdminSummary = {
     user?: {
@@ -82,6 +84,16 @@ type AdminSummary = {
 };
 
 export default function AdminDashboard() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto" /></div>}>
+            <AdminDashboardContent />
+        </Suspense>
+    );
+}
+
+function AdminDashboardContent() {
+    const searchParams = useSearchParams();
+    const defaultTab = searchParams.get('tab') || 'overview';
     const [summary, setSummary] = useState<AdminSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -140,7 +152,7 @@ export default function AdminDashboard() {
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="users">Users</TabsTrigger>

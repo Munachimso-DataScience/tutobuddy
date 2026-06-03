@@ -95,6 +95,49 @@ export const getCourses = async (req: any, res: any) => {
     }
 };
 
+export const getStudentClasses = async (req: any, res: any) => {
+    try {
+        const studentId = req.user.$id;
+        
+        try {
+            // 1. Get enrollments for this student
+            const enrollments = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.COURSE_ENROLLMENTS,
+                [Query.equal('student_id', studentId)]
+            );
+
+            if (enrollments.documents.length === 0) {
+                return res.status(200).json([]);
+            }
+
+            // 2. Fetch the actual offerings
+            const offeringIds = enrollments.documents.map(e => e.offering_id);
+            // Deduplicate if needed
+            const uniqueOfferingIds = [...new Set(offeringIds)];
+
+            // Appwrite requires multiple equal queries if you want to query an array of IDs, OR we can fetch them individually
+            // Since Appwrite array querying can be tricky, we'll fetch them individually or in a loop
+            const offerings = [];
+            for (const id of uniqueOfferingIds) {
+                try {
+                    const offering = await databases.getDocument(DATABASE_ID, COLLECTIONS.COURSE_OFFERINGS, id as string);
+                    offerings.push(offering);
+                } catch (e) {
+                    console.warn(`Could not fetch offering ${id}`);
+                }
+            }
+
+            res.status(200).json(offerings);
+        } catch (dbError: any) {
+            console.error('Database error in getStudentClasses:', dbError.message);
+            res.status(200).json([]);
+        }
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export const deleteCourse = async (req: any, res: any) => {
     try {
         const { id } = req.params;

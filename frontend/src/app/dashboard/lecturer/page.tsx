@@ -127,17 +127,7 @@ export default function LecturerDashboard() {
     const [selectedStudentId, setSelectedStudentId] = useState('');
     const [studentHistory, setStudentHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
-    const [offerings, setOfferings] = useState<NonNullable<LecturerSummary['offerings']>>([]);
-    const [offeringTitle, setOfferingTitle] = useState('');
-    const [offeringCode, setOfferingCode] = useState('');
-    const [offeringDescription, setOfferingDescription] = useState('');
-    const [offeringDepartment, setOfferingDepartment] = useState('');
-    const [offeringClassGroup, setOfferingClassGroup] = useState('');
-    const [offeringTerm, setOfferingTerm] = useState('');
-    const [offeringStatus, setOfferingStatus] = useState('active');
-    const [autoEnroll, setAutoEnroll] = useState(true);
-    const [savingOffering, setSavingOffering] = useState(false);
-    const [offeringFile, setOfferingFile] = useState<File | null>(null);
+
 
     useEffect(() => {
         const loadSummary = async () => {
@@ -145,16 +135,12 @@ export default function LecturerDashboard() {
                 setLoading(true);
                 setError(null);
                 const jwt = await getCachedJWT();
-                const [summaryData, offeringsData] = await Promise.all([
-                    getLecturerSummary(jwt, {
+                const summaryData = await getLecturerSummary(jwt, {
                     range,
                     classGroup: selectedClassGroup || profile?.class_group || '',
                     courseId
-                    }),
-                    getLecturerCourseOfferings(jwt)
-                ]);
+                });
                 setSummary(summaryData);
-                setOfferings(offeringsData.offerings || []);
             } catch (err) {
                 console.error('Failed to load lecturer summary:', err);
                 setError('Unable to load lecturer dashboard data right now.');
@@ -227,46 +213,7 @@ export default function LecturerDashboard() {
         }
     };
 
-    const handleCreateOffering = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            setSavingOffering(true);
-            const jwt = await getCachedJWT();
-            
-            const formData = new FormData();
-            formData.append('title', offeringTitle);
-            if (offeringCode) formData.append('code', offeringCode);
-            if (offeringDescription) formData.append('description', offeringDescription);
-            if (offeringDepartment) formData.append('department', offeringDepartment);
-            if (offeringClassGroup) formData.append('class_group', offeringClassGroup);
-            if (offeringTerm) formData.append('term', offeringTerm);
-            if (offeringStatus) formData.append('status', offeringStatus);
-            formData.append('auto_enroll', autoEnroll.toString());
-            
-            if (offeringFile) {
-                formData.append('file', offeringFile);
-            }
 
-            const result = await createLecturerCourseOffering(jwt, formData);
-            toast.success(`Course offering created${result.enrolled ? ` and ${result.enrolled} students enrolled` : ''}.`);
-            setOfferingTitle('');
-            setOfferingCode('');
-            setOfferingDescription('');
-            setOfferingDepartment('');
-            setOfferingClassGroup('');
-            setOfferingTerm('');
-            setOfferingStatus('active');
-            setAutoEnroll(true);
-            setOfferingFile(null);
-            const refreshed = await getLecturerCourseOfferings(jwt);
-            setOfferings(refreshed.offerings || []);
-        } catch (err) {
-            console.error('Failed to create course offering:', err);
-            toast.error('Unable to create the course offering right now.');
-        } finally {
-            setSavingOffering(false);
-        }
-    };
 
     if (loading) {
         return (
@@ -373,7 +320,6 @@ export default function LecturerDashboard() {
                     <TabsTrigger value="courses">Courses</TabsTrigger>
                     <TabsTrigger value="classes">Classes</TabsTrigger>
                     <TabsTrigger value="progress">Progress</TabsTrigger>
-                    <TabsTrigger value="offerings">Offerings</TabsTrigger>
                     <TabsTrigger value="weaknesses">Weaknesses</TabsTrigger>
                     <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
                     <TabsTrigger value="history">History</TabsTrigger>
@@ -421,7 +367,7 @@ export default function LecturerDashboard() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Course offerings</span>
-                                    <Badge variant="secondary">{offerings.length}</Badge>
+                                    <Badge variant="secondary">{summary?.offerings?.length || 0}</Badge>
                                 </div>
                             </div>
                         </Card>
@@ -500,106 +446,7 @@ export default function LecturerDashboard() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="offerings">
-                    <div className="grid gap-6 lg:grid-cols-2">
-                        <Card>
-                            <h3 className="font-semibold mb-4">Create Course Offering</h3>
-                            <form className="space-y-3" onSubmit={handleCreateOffering}>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">Title</label>
-                                        <input value={offeringTitle} onChange={(e) => setOfferingTitle(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. Calculus I" required />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="offeringCodeInput" className="mb-1 block text-sm font-medium">Code</label>
-                                        {(summary?.lecturer?.assigned_courses || []).length > 0 ? (
-                                            <select
-                                                id="offeringCodeInput"
-                                                title="Course Offering Code"
-                                                value={offeringCode}
-                                                onChange={(e) => setOfferingCode(e.target.value)}
-                                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                                required
-                                            >
-                                                <option value="" disabled>Select assigned course</option>
-                                                {summary?.lecturer?.assigned_courses?.map((course) => (
-                                                    <option key={course} value={course}>{course}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <input id="offeringCodeInput" title="Course Offering Code" value={offeringCode} onChange={(e) => setOfferingCode(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. MTH101" required />
-                                        )}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium">Description</label>
-                                    <textarea value={offeringDescription} onChange={(e) => setOfferingDescription(e.target.value)} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Short description of this course offering" />
-                                </div>
-                                <div>
-                                    <label htmlFor="courseMaterialFile" className="mb-1 block text-sm font-medium">Course Material (PDF/DOCX)</label>
-                                    <input id="courseMaterialFile" title="Upload Course Material File" type="file" onChange={(e) => setOfferingFile(e.target.files ? e.target.files[0] : null)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" accept=".pdf,.docx,.doc,.txt" />
-                                    <p className="text-xs text-muted-foreground mt-1">This file will be automatically added to enrolled students' study materials.</p>
-                                </div>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">Department</label>
-                                        <input value={offeringDepartment} onChange={(e) => setOfferingDepartment(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. Mathematics" />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">Class Group</label>
-                                        <input value={offeringClassGroup} onChange={(e) => setOfferingClassGroup(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. Year 2 A" />
-                                    </div>
-                                </div>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">Term</label>
-                                        <input value={offeringTerm} onChange={(e) => setOfferingTerm(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="e.g. 2026/2027 First Term" />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">Status</label>
-                                        <select aria-label="Status" value={offeringStatus} onChange={(e) => setOfferingStatus(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
-                                            <option value="active">Active</option>
-                                            <option value="draft">Draft</option>
-                                            <option value="archived">Archived</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input type="checkbox" checked={autoEnroll} onChange={(e) => setAutoEnroll(e.target.checked)} />
-                                    Auto-enroll students from the selected class group
-                                </label>
-                                <button type="submit" disabled={savingOffering} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">
-                                    {savingOffering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                    Create offering
-                                </button>
-                            </form>
-                        </Card>
 
-                        <Card>
-                            <h3 className="font-semibold mb-4">Current Course Offerings</h3>
-                            <div className="space-y-3">
-                                {offerings.length > 0 ? offerings.map((offering) => (
-                                    <div key={offering.$id} className="rounded-lg border border-border p-3">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div>
-                                                <p className="font-medium">{offering.title || 'Untitled offering'}</p>
-                                                <p className="text-xs text-muted-foreground">{offering.code || 'No code'} {offering.term ? `- ${offering.term}` : ''}</p>
-                                            </div>
-                                            <Badge variant="secondary">{offering.status || 'active'}</Badge>
-                                        </div>
-                                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                            {offering.department ? <Badge variant="outline">{offering.department}</Badge> : null}
-                                            {offering.class_group ? <Badge variant="outline">{offering.class_group}</Badge> : null}
-                                            <Badge variant="outline">{offering.enrolled_students ?? 0} students</Badge>
-                                        </div>
-                                    </div>
-                                )) : (
-                                    <p className="text-sm text-muted-foreground">No lecturer course offerings yet.</p>
-                                )}
-                            </div>
-                        </Card>
-                    </div>
-                </TabsContent>
 
                 <TabsContent value="courses">
                     <div className="grid gap-4">

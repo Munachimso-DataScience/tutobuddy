@@ -94,15 +94,15 @@ export default function CoursesPage() {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Courses</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage all your academic courses in one place.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Personal Study Spaces</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload notes to generate AI flashcards and quizzes.</p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
                 >
                     <Plus className="mr-2 h-5 w-5" />
-                    New Course
+                    New Space
                 </button>
             </div>
 
@@ -135,15 +135,15 @@ export default function CoursesPage() {
                     <div className="h-20 w-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
                         <BookPlus className="h-10 w-10 text-gray-300" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">No courses yet</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">No study spaces yet</h3>
                     <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                        Add your first course to start tracking your progress and generating study materials.
+                        Upload your first document to let the AI generate personal study materials.
                     </p>
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="mt-8 text-blue-600 font-bold hover:underline"
                     >
-                        Click here to add your first course
+                        Click here to create a study space
                     </button>
                 </motion.div>
             )}
@@ -159,14 +159,14 @@ export default function CoursesPage() {
                             className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                         >
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
-                                <h3 className="text-lg font-bold">Add New Course</h3>
+                                <h3 className="text-lg font-bold">Create Study Space</h3>
                                 <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close Modal" aria-label="Close Modal">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
                             <form onSubmit={handleAddCourse} className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                                 <div className="space-y-1">
-                                    <label htmlFor="course-name" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Course Name</label>
+                                    <label htmlFor="course-name" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Space Name</label>
                                     <input
                                         id="course-name"
                                         required
@@ -195,7 +195,7 @@ export default function CoursesPage() {
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-blue-500 rounded-xl transition-all"
-                                        placeholder="Briefly describe what this course covers..."
+                                        placeholder="Briefly describe what this space covers..."
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -290,7 +290,7 @@ export default function CoursesPage() {
                                         disabled={isSubmitting}
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center disabled:opacity-50"
                                     >
-                                        {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : 'Create Course'}
+                                        {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : 'Create Space'}
                                     </button>
                                 </div>
                             </form>

@@ -22,24 +22,7 @@ export const initScheduler = () => {
     schedulerStatus.startedAt = new Date().toISOString();
     console.log('Scheduler initialized: Inactivity checks (24h), Daily Study Summaries, Study Reminders, and Weekly Reports (7d).');
 
-    // Initial check on startup (after 10 seconds delay)
-    setTimeout(() => {
-        console.log('Running initial inactivity check on startup...');
-        markRun();
-        checkInactivity({} as any, null as any);
-    }, 10000);
-
-    setTimeout(() => {
-        console.log('Running initial daily study summary on startup...');
-        markRun();
-        sendDailyStudySummaries({} as any, null as any);
-    }, 15000);
-
-    setTimeout(() => {
-        console.log('Running initial study session reminders on startup...');
-        markRun();
-        sendStudySessionReminders({} as any, null as any);
-    }, 20000);
+    // Start-up triggers disabled to prevent email spam on server restart.
 
     // Run inactivity check every 24 hours
     setInterval(() => {
@@ -49,10 +32,10 @@ export const initScheduler = () => {
     }, 24 * 60 * 60 * 1000);
 
     setInterval(() => {
-        console.log('Running scheduled daily study summary...');
+        console.log('Running scheduled study summary...');
         markRun();
         sendDailyStudySummaries({} as any, null as any);
-    }, 24 * 60 * 60 * 1000);
+    }, 7 * 24 * 60 * 60 * 1000); // Changed to weekly
 
     setInterval(() => {
         console.log('Running scheduled study session reminders...');
