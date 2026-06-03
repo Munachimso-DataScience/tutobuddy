@@ -258,7 +258,7 @@ export default function DashboardPage() {
                 {/* Readiness & Goals */}
                 <div className="space-y-8">
                     <div className="bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm flex flex-col items-center">
-                        <div className="[&_*]:text-white dark:[&_*]:text-white">
+                        <div className="[&_*]:text-white dark:[&_*]:text-white w-full">
                             <ReadinessChart textWhite={true} percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
                         </div>
                         <div className="mt-4 text-center">
@@ -279,7 +279,7 @@ export default function DashboardPage() {
                                 Students who study at least 30 minutes a day are 4x more likely to pass their finals.
                             </p>
                             <Link href="/dashboard/success-tips" className="mt-6 inline-block">
-                                    <button className="bg-white text-secondary px-4 py-2 rounded-xl text-xs font-bold hover:bg-cream transition-colors shadow-lg">
+                                    <button className="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-cream transition-colors shadow-lg">
                                     Learn More
                                 </button>
                             </Link>
