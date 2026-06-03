@@ -121,36 +121,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
             
-            // Give the SDK a tiny moment to flush to localStorage
-            await sleep(500);
-            const backupCookie = typeof localStorage !== 'undefined' ? localStorage.getItem('cookieFallback') : null;
-            console.log('Fallback cookie captured, length:', backupCookie ? backupCookie.length : 0);
+            // CRITICAL FIX: The Appwrite SDK caches the fallback cookie in memory.
+            // If we poll `account.get()` and it fails with a 401 due to read-replica lag, 
+            // the SDK permanently wipes the in-memory cookie, dooming all future requests until a hard refresh.
+            // We MUST NOT poll. We simply wait 3.5 seconds for global read-replica synchronization.
+            console.log('Waiting 3500ms for Appwrite global read-replica sync...');
+            await sleep(3500);
 
-            for (let i = 0; i < 6; i++) {
-                if (i > 0) await sleep(1500); // Wait longer between attempts
-                try {
-                    // Forcefully restore cookie BEFORE the attempt, because any stray parallel 401 might have wiped it!
-                    if (backupCookie && typeof localStorage !== 'undefined') {
-                        localStorage.setItem('cookieFallback', backupCookie);
-                    }
-                    
-                    const check = await account.get();
-                    if (check) {
-                        sessionVerified = true;
-                        break;
-                    }
-                } catch (e) {
-                    console.log(`Waiting for session to propagate... (Attempt ${i + 1})`);
-                    // Restore after failure as well
-                    if (backupCookie && typeof localStorage !== 'undefined') {
-                        localStorage.setItem('cookieFallback', backupCookie);
-                    }
-                }
-            }
 
-            if (!sessionVerified) {
-                throw new Error("Session creation timeout. Please ensure third-party cookies are enabled or try again.");
-            }
 
             const resolvedRole = await checkUser();
             if (!resolvedRole) {
