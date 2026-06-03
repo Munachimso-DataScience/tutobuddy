@@ -607,6 +607,13 @@ export const createCourseOffering = async (req: Request, res: Response) => {
                 originalFileName = file.originalname;
                 fileExt = path.extname(file.originalname).substring(1) || 'unknown';
                 fs.unlinkSync(file.path);
+                
+                // Update the offering document with the file metadata so retroactive enrollments can access it
+                await databases.updateDocument(DATABASE_ID, COLLECTIONS.COURSE_OFFERINGS, offering.$id, {
+                    file_id: uploadedFileId,
+                    file_name: originalFileName,
+                    file_type: fileExt
+                });
             } catch (err: any) {
                 console.error('Failed to upload file to storage:', err.message);
                 if (fs.existsSync(file.path)) {
@@ -618,7 +625,17 @@ export const createCourseOffering = async (req: Request, res: Response) => {
         const profilesResponse = await listAllDocuments(COLLECTIONS.USERS);
         const shouldAutoEnroll = String((req.body || {}).auto_enroll ?? 'true').toLowerCase() !== 'false';
         const students = shouldAutoEnroll
-            ? profilesResponse.documents.filter((profile) => profile.role === 'student' && isSameKey(profile.class_group, classGroup))
+            ? profilesResponse.documents.filter((profile) => {
+                if (profile.role !== 'student') return false;
+                
+                const matchesDept = department ? isSameKey(profile.department, department) : true;
+                const matchesClass = classGroup ? isSameKey(profile.class_group, classGroup) : true;
+                
+                // If neither department nor classGroup is specified, don't auto-enroll everyone
+                if (!department && !classGroup) return false;
+                
+                return matchesDept && matchesClass;
+            })
             : [];
         const enrollments = [];
 
