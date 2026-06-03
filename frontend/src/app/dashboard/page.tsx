@@ -45,21 +45,21 @@ type StatCardProps = {
 };
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: StatCardProps) => (
-    <div className="bg-surface/90 dark:bg-surface-2/90 p-6 rounded-2xl shadow-sm border border-primary/10 dark:border-primary/20">
+    <div className="bg-[var(--teal)] text-white p-6 rounded-2xl shadow-sm">
         <div className="flex items-start justify-between">
-            <div className={`p-3 rounded-xl ${color}`}>
+            <div className={`p-3 rounded-xl bg-white/20`}>
                 <Icon className="h-6 w-6 text-white" />
             </div>
             {trend && (
-            <div className="flex items-center text-secondary text-xs font-bold bg-secondary/10 px-2 py-1 rounded-lg">
+            <div className="flex items-center text-white text-xs font-bold bg-white/20 px-2 py-1 rounded-lg">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     {trend}
                 </div>
             )}
         </div>
         <div className="mt-4">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">{label}</h3>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+            <h3 className="text-white/80 text-sm font-medium uppercase tracking-wider">{label}</h3>
+            <p className="text-2xl font-bold text-white mt-1">{value}</p>
         </div>
     </div>
 );
@@ -208,28 +208,28 @@ export default function DashboardPage() {
             </div>
 
             {/* Daily Quests Section */}
-            <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20">
+            <div className="bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h3 className="text-xl font-black text-foreground dark:text-cream uppercase tracking-tighter">Daily Quests</h3>
-                        <p className="text-sm text-foreground/60 font-medium">Complete these to level up your exam readiness</p>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">Daily Quests</h3>
+                        <p className="text-sm text-white/80 font-medium">Complete these to level up your exam readiness</p>
                     </div>
-                    <div className="px-4 py-2 bg-secondary/10 rounded-xl text-secondary text-xs font-black uppercase tracking-widest">
+                    <div className="px-4 py-2 bg-white/20 rounded-xl text-white text-xs font-black uppercase tracking-widest">
                         {completedQuestsCount}/3 Complete
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {dailyQuests.map((quest, i) => (
-                        <div key={i} className="flex items-center p-4 bg-background/70 dark:bg-background/15 rounded-2xl group cursor-pointer hover:bg-surface/90 dark:hover:bg-surface-2/40 transition-all border border-transparent hover:border-primary/10 dark:hover:border-primary/20">
-                            <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-secondary/10`}>
+                        <div key={i} className="flex items-center p-4 bg-white/10 rounded-2xl group cursor-pointer hover:bg-white/20 transition-all border border-transparent hover:border-white/30">
+                            <div className={`${quest.color} h-12 w-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg shadow-black/10`}>
                                 <CheckCircle2 size={20} className={quest.done ? "text-white" : "text-white/30"} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-bold text-foreground dark:text-cream text-sm">{quest.title}</h4>
-                                <p className="text-xs text-foreground/55">{quest.desc}</p>
+                                <h4 className="font-bold text-white text-sm">{quest.title}</h4>
+                                <p className="text-xs text-white/70">{quest.desc}</p>
                             </div>
-                            <div className="text-[10px] font-black text-secondary uppercase tracking-widest pl-2">
+                            <div className="text-[10px] font-black text-white uppercase tracking-widest pl-2">
                                 {quest.xp}
                             </div>
                         </div>
@@ -239,30 +239,34 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Activity Chart */}
-                <div className="lg:col-span-2 bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20">
+                <div className="lg:col-span-2 bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold text-foreground dark:text-cream">Study Activity</h3>
-                            <p className="text-sm text-foreground/60 font-medium">Weekly hours spent learning</p>
+                            <h3 className="text-xl font-bold text-white">Study Activity</h3>
+                            <p className="text-sm text-white/80 font-medium">Weekly hours spent learning</p>
                         </div>
-                        <select className="bg-background/70 dark:bg-background/20 border-none rounded-lg text-xs font-bold px-3 py-2 focus:ring-2 focus:ring-secondary" title="Select Study Activity Time Range" aria-label="Select Study Activity Time Range">
-                            <option>Last 7 Days</option>
-                            <option>Last 30 Days</option>
+                        <select className="bg-white/20 border-none rounded-lg text-white text-xs font-bold px-3 py-2 outline-none focus:ring-2 focus:ring-white" title="Select Study Activity Time Range" aria-label="Select Study Activity Time Range">
+                            <option className="text-black">Last 7 Days</option>
+                            <option className="text-black">Last 30 Days</option>
                         </select>
                     </div>
-                    <StudyActivityChart logs={stats?.recentLogs} />
+                    <div className="[&_*]:text-white dark:[&_*]:text-white">
+                        <StudyActivityChart logs={stats?.recentLogs} />
+                    </div>
                 </div>
 
                 {/* Readiness & Goals */}
                 <div className="space-y-8">
-                    <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20 flex flex-col items-center">
-                        <ReadinessChart percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
+                    <div className="bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm flex flex-col items-center">
+                        <div className="[&_*]:text-white dark:[&_*]:text-white">
+                            <ReadinessChart percentage={courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + (c.exam_readiness || 0), 0) / courses.length) : 0} />
+                        </div>
                         <div className="mt-4 text-center">
-                            <p className="text-sm text-gray-500 font-medium px-4">
+                            <p className="text-sm text-white/90 font-medium px-4">
                                 {courses.length > 0 ? (
-                                    <span>Based on your activity across <span className="text-secondary font-bold">{courses.length} courses</span>.</span>
+                                    <span>Based on your activity across <span className="font-bold text-white">{courses.length} courses</span>.</span>
                                 ) : (
-                                    <span>Complete your first quiz to see your <span className="text-secondary font-bold">Exam Readiness</span>.</span>
+                                    <span>Complete your first quiz to see your <span className="font-bold text-white">Exam Readiness</span>.</span>
                                 )}
                             </p>
                         </div>
@@ -290,52 +294,52 @@ export default function DashboardPage() {
             <AnalyticsDashboard />
 
             {/* Courses Progress section */}
-            <div className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-8 shadow-sm border border-primary/10 dark:border-primary/20 mt-8">
+            <div className="bg-[var(--teal)] text-white rounded-3xl p-8 shadow-sm mt-8">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-foreground dark:text-cream">Courses & Exam Readiness</h3>
+                    <h3 className="text-xl font-bold text-white">Courses & Exam Readiness</h3>
                 </div>
                 <div className="space-y-6">
                     {courses.map((course: DashboardCourse, idx: number) => {
                         const examDate = course.exam_date ? new Date(course.exam_date) : null;
                         const daysToExam = examDate ? Math.ceil((examDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : null;
                         return (
-                        <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl">
+                        <div key={idx} className="bg-white/10 p-6 rounded-2xl">
                             <style>{`
                                 .progress-bar-prog-${idx} { width: ${course.progress || 0}%; }
                                 .progress-bar-read-${idx} { width: ${course.exam_readiness || 0}%; }
                             `}</style>
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">{course.title} ({course.code})</h4>
+                                    <h4 className="text-lg font-bold text-white">{course.title} ({course.code})</h4>
                                     {daysToExam !== null && daysToExam > 0 ? (
-                                        <p className="text-xs font-semibold text-secondary mt-1">{daysToExam} days until final exam ({examDate?.toLocaleDateString()})</p>
+                                        <p className="text-xs font-semibold text-white/80 mt-1">{daysToExam} days until final exam ({examDate?.toLocaleDateString()})</p>
                                     ) : daysToExam !== null && daysToExam <= 0 ? (
-                                        <p className="text-xs font-semibold text-red-500 mt-1">Exam Date Passed</p>
+                                        <p className="text-xs font-semibold text-red-300 mt-1">Exam Date Passed</p>
                                     ) : (
-                                        <p className="text-xs font-semibold text-gray-500 mt-1">No exam date set</p>
+                                        <p className="text-xs font-semibold text-white/60 mt-1">No exam date set</p>
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-sm font-bold text-secondary dark:text-secondary">Readiness: {course.exam_readiness || 0}%</span>
+                                    <span className="text-sm font-bold text-white">Readiness: {course.exam_readiness || 0}%</span>
                                 </div>
                             </div>
                             
                             <div className="space-y-4">
                                 <div>
-                                    <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
+                                    <div className="flex justify-between text-xs font-semibold text-white/80 mb-2">
                                         <span>Course Completion</span>
                                         <span>{course.progress || 0}%</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                                        <div className={`bg-primary h-2.5 rounded-full progress-bar-prog-${idx}`}></div>
+                                    <div className="w-full bg-black/20 rounded-full h-2.5">
+                                        <div className={`bg-white h-2.5 rounded-full progress-bar-prog-${idx}`}></div>
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
+                                    <div className="flex justify-between text-xs font-semibold text-white/80 mb-2">
                                         <span>Topics Studied & Mastered</span>
                                         <span>{course.exam_readiness || 0}%</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                    <div className="w-full bg-black/20 rounded-full h-2.5">
                                         <div className={`bg-secondary h-2.5 rounded-full progress-bar-read-${idx}`}></div>
                                     </div>
                                 </div>
@@ -343,9 +347,9 @@ export default function DashboardPage() {
                         </div>
                     )})}
                     {courses.length === 0 && (
-                        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
-                            <BookOpen className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                            <p className="text-sm text-gray-500 font-medium">You have not enrolled in any courses yet.</p>
+                        <div className="text-center py-8 bg-white/10 rounded-2xl">
+                            <BookOpen className="h-10 w-10 text-white/50 mx-auto mb-3" />
+                            <p className="text-sm text-white/70 font-medium">You have not enrolled in any courses yet.</p>
                         </div>
                     )}
                 </div>

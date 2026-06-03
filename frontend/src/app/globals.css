@@ -13,6 +13,7 @@
   --denim: #1e3a8a;
   --ink: #020617;
   --cream: #f8fafc;
+  --teal: #0f766e;
 }
 
 .dark {
@@ -27,6 +28,7 @@
   --denim: #bfdbfe;
   --ink: #f8fafc;
   --cream: #f1f5f9;
+  --teal: #14b8a6;
 }
 
 body {
