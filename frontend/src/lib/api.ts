@@ -1,5 +1,6 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export const AI_URL = process.env.NEXT_PUBLIC_AI_URL || 'http://localhost:8000';
+import axios from 'axios';
 
 export const getAdminSummary = async (jwt?: string) => {
     const res = await fetch(`${API_URL}/api/admin/summary`, {
@@ -40,23 +41,35 @@ export const getLecturerCourseOfferings = async (jwt?: string) => {
     return res.json();
 };
 
+export const getStudentClasses = async (jwt?: string) => {
+    const res = await fetch(`${API_URL}/api/student/classes`, {
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
+    });
+    if (!res.ok) {
+        throw new Error('Failed to fetch student classes');
+    }
+    return res.json();
+};
+
 export const createLecturerCourseOffering = async (
     jwt: string | undefined,
     payload: FormData
 ) => {
-    const res = await fetch(`${API_URL}/api/lecturer/course-offerings`, {
-        method: 'POST',
-        headers: {
-            ...(jwt ? { Authorization: `Bearer ${jwt}` } : {})
-        },
-        body: payload
-    });
-
-    if (!res.ok) {
-        throw new Error('Failed to create lecturer course offering');
+    if (!jwt) {
+        throw new Error('Authentication failed: Missing JWT token. Please refresh the page and try again.');
     }
 
-    return res.json();
+    try {
+        const res = await axios.post(`${API_URL}/api/lecturer/course-offerings`, payload, {
+            headers: {
+                Authorization: `Bearer ${jwt}`
+            }
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('Failed to create lecturer course offering:', error.response?.data || error.message);
+        throw new Error(error.response?.data?.error || 'Failed to create lecturer course offering');
+    }
 };
 
 export const sendLecturerReminder = async (
