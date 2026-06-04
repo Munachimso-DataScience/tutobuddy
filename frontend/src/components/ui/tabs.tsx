@@ -62,10 +62,10 @@ export function TabsTrigger({
             type="button"
             onClick={() => context.setValue(value)}
             className={cn(
-                'rounded-xl px-4 py-2 text-sm font-semibold transition-colors',
+                'relative overflow-hidden rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200',
                 active
-                    ? 'bg-secondary text-white shadow-sm'
-                    : 'bg-transparent text-foreground/70 hover:bg-secondary/10 hover:text-foreground dark:text-cream/70',
+                    ? "bg-secondary/10 text-secondary shadow-sm ring-1 ring-secondary/15 after:pointer-events-none after:absolute after:inset-x-4 after:bottom-1 after:h-0.5 after:rounded-full after:bg-secondary after:content-['']"
+                    : 'bg-transparent text-foreground/70 hover:bg-secondary/10 hover:text-foreground hover:shadow-sm hover:ring-1 hover:ring-secondary/10 dark:text-cream/70',
                 className
             )}
         >

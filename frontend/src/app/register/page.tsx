@@ -8,6 +8,9 @@ import { motion } from 'framer-motion';
 import { User, Mail, Lock, GraduationCap, BookOpen, Loader2, Eye, EyeOff } from 'lucide-react';
 import { ID as AppwriteID } from 'appwrite';
 
+const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'tutorbuddy';
+const USERS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_USERS || 'users_profiles';
+
 export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -51,8 +54,8 @@ export default function RegisterPage() {
             for (let i = 0; i < 5; i++) {
                 try {
                     await databases.createDocument(
-                        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-                        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_USERS!,
+                        DATABASE_ID,
+                        USERS_COLLECTION_ID,
                         userAccount.$id,
                         {
                             user_id: userAccount.$id,

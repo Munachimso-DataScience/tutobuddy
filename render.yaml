@@ -64,5 +64,7 @@ services:
         sync: false
       - key: NEXT_PUBLIC_APPWRITE_DATABASE_ID
         sync: false
+      - key: NEXT_PUBLIC_APPWRITE_COLLECTION_USERS
+        value: "users_profiles"
       - key: NEXT_PUBLIC_APPWRITE_STORAGE_ID
         sync: false
