@@ -24,6 +24,8 @@ export default function UserManagement() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const { role: currentUserRole } = useAuth();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const loadUsers = async () => {
         try {
@@ -87,10 +89,44 @@ export default function UserManagement() {
 
     if (loading) return <div className="flex p-4"><Loader2 className="animate-spin text-primary" /></div>;
 
+    const filteredAndSortedUsers = [...users]
+        .filter(u => {
+            const term = searchTerm.toLowerCase();
+            const nameMatch = (u.full_name || '').toLowerCase().includes(term);
+            const emailMatch = (u.email || u.Email || '').toLowerCase().includes(term);
+            return nameMatch || emailMatch;
+        })
+        .sort((a, b) => {
+            const nameA = (a.full_name || a.email || a.Email || '').toLowerCase();
+            const nameB = (b.full_name || b.email || b.Email || '').toLowerCase();
+            if (sortOrder === 'asc') return nameA.localeCompare(nameB);
+            return nameB.localeCompare(nameA);
+        });
+
     return (
         <div className="mt-6 rounded-2xl border bg-card text-card-foreground shadow-sm">
             <div className="p-6">
-                <h3 className="text-lg font-bold mb-4">Manage Users</h3>
+                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
+                    <h3 className="text-lg font-bold">Manage Users</h3>
+                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                        <input 
+                            type="text" 
+                            placeholder="Search name or email..." 
+                            className="bg-background border rounded-xl px-4 py-2 text-sm w-full sm:w-64 focus:ring-2 focus:ring-primary outline-none transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <select 
+                            className="bg-background border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none transition-all w-full sm:w-auto"
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                            title="Sort Order"
+                        >
+                            <option value="asc">A to Z</option>
+                            <option value="desc">Z to A</option>
+                        </select>
+                    </div>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs uppercase bg-muted text-muted-foreground">
@@ -104,7 +140,7 @@ export default function UserManagement() {
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map(user => (
+                            {filteredAndSortedUsers.map(user => (
                                 <tr key={user.$id} className="border-b last:border-0 hover:bg-muted/50">
                                     <td className="px-4 py-3 font-medium">{user.full_name || 'N/A'}</td>
                                     <td className="px-4 py-3 text-muted-foreground">{user.email || user.Email || 'N/A'}</td>
@@ -159,9 +195,11 @@ export default function UserManagement() {
                                     </td>
                                 </tr>
                             ))}
-                            {users.length === 0 && (
+                            {filteredAndSortedUsers.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground">No users found.</td>
+                                    <td colSpan={6} className="px-4 py-4 text-center text-muted-foreground">
+                                        {users.length === 0 ? "No users found." : "No users match your search."}
+                                    </td>
                                 </tr>
                             )}
                         </tbody>
