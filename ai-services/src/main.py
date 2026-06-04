@@ -2266,6 +2266,7 @@ async def chat_material(data: dict):
     try:
         context_text = data.get("text", "")
         question = data.get("question", "")
+        history = data.get("history", [])
         
         if not context_text or not question:
             raise HTTPException(status_code=400, detail="Missing text or question")
@@ -2275,6 +2276,13 @@ async def chat_material(data: dict):
         if len(context_text) > max_chars:
             context_text = context_text[:max_chars] + "... [Content Truncated]"
 
+        history_text = ""
+        if history and isinstance(history, list) and len(history) > 0:
+            history_text = "PAST CONVERSATION HISTORY:\n"
+            for msg in history[-10:]: # keep last 10 messages to avoid token bloat
+                role = "AI Tutor" if msg.get("role") == "ai" else "Student"
+                history_text += f"{role}: {msg.get('content')}\n\n"
+
         prompt = f"""
         You are a helpful and expert AI Study Tutor. 
         Your student is asking a question about a specific study material.
@@ -2282,6 +2290,7 @@ async def chat_material(data: dict):
         STUDY MATERIAL CONTEXT (First {max_chars} characters):
         {context_text}
         
+        {history_text}
         STUDENT QUESTION:
         {question}
         

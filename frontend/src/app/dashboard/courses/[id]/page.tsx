@@ -282,7 +282,19 @@ export default function CourseDetailsPage() {
     const handleOpenChat = (materialId: string, title: string) => {
         setChatMaterialId(materialId);
         setChatTitle(title);
-        setChatMessages([{ role: 'ai', content: `Hello! I'm your AI tutor. What questions do you have about "${title}"?` }]);
+        
+        // Load history from localStorage
+        const storedHistory = localStorage.getItem(`tutorbuddy-chat-${materialId}`);
+        if (storedHistory) {
+            try {
+                setChatMessages(JSON.parse(storedHistory));
+            } catch (e) {
+                setChatMessages([{ role: 'ai', content: `Hello! I'm your AI tutor. What questions do you have about "${title}"?` }]);
+            }
+        } else {
+            setChatMessages([{ role: 'ai', content: `Hello! I'm your AI tutor. What questions do you have about "${title}"?` }]);
+        }
+        
         setIsChatOpen(true);
     };
 
@@ -290,23 +302,33 @@ export default function CourseDetailsPage() {
         if (!chatInput.trim() || !chatMaterialId) return;
         
         const userMsg = chatInput;
-        setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        const updatedMessages = [...chatMessages, { role: 'user', content: userMsg }] as {role: 'user' | 'ai', content: string}[];
+        setChatMessages(updatedMessages);
         setChatInput('');
         setChatLoading(true);
+        
+        // Save to local storage immediately
+        localStorage.setItem(`tutorbuddy-chat-${chatMaterialId}`, JSON.stringify(updatedMessages));
         
         try {
             const jwt = await getCachedJWT();
             const res = await axios.post(`${API_URL}/api/materials/${chatMaterialId}/chat`, {
-                question: userMsg
+                question: userMsg,
+                history: chatMessages // send the history (excluding the user msg we just added) to the backend
             }, {
                 headers: { Authorization: `Bearer ${jwt}` }
             });
             
-            setChatMessages(prev => [...prev, { role: 'ai', content: res.data.answer }]);
+            const finalMessages = [...updatedMessages, { role: 'ai', content: res.data.answer }] as {role: 'user' | 'ai', content: string}[];
+            setChatMessages(finalMessages);
+            localStorage.setItem(`tutorbuddy-chat-${chatMaterialId}`, JSON.stringify(finalMessages));
         } catch (error) {
             console.error("Chat failed:", error);
             toast.error("Failed to get an answer.");
-            setChatMessages(prev => [...prev, { role: 'ai', content: "Sorry, I couldn't get an answer right now. Please try again later." }]);
+            
+            const errorMessages = [...updatedMessages, { role: 'ai', content: "Sorry, I couldn't get an answer right now. Please try again later." }] as {role: 'user' | 'ai', content: string}[];
+            setChatMessages(errorMessages);
+            // Don't save the error to local storage, so the user can try again cleanly
         } finally {
             setChatLoading(false);
         }

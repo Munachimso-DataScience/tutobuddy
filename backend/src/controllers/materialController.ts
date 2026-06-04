@@ -185,7 +185,7 @@ export const summarizeMaterial = async (req: any, res: any) => {
 export const chatWithMaterial = async (req: any, res: any) => {
     try {
         const { id } = req.params;
-        const { question } = req.body;
+        const { question, history } = req.body;
         
         if (!question) {
             return res.status(400).json({ error: 'Question is required' });
@@ -199,7 +199,8 @@ export const chatWithMaterial = async (req: any, res: any) => {
         
         const chatRes = await axios.post(`${AI_URL}/chat-material`, {
             text: text,
-            question: question
+            question: question,
+            history: history || []
         }, { timeout: 180000 });
         
         res.status(200).json({ answer: chatRes.data.answer });
