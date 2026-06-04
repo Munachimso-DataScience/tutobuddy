@@ -53,7 +53,7 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
         <Link href={`/dashboard/courses/${course.$id}`} className="block">
             <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-surface/90 dark:bg-surface-2/90 rounded-3xl p-6 shadow-sm border border-primary/10 dark:border-primary/20 cursor-pointer group transition-all"
+                className="bg-white dark:bg-[#323033e3] rounded-3xl p-6 shadow-sm border border-primary/10 dark:border-primary/20 cursor-pointer group transition-all"
             >
                 <div className="flex items-start justify-between mb-4">
                     <div className="h-12 w-12 bg-secondary/10 rounded-2xl flex items-center justify-center group-hover:bg-primary transition-colors">
