@@ -5,9 +5,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 interface StudyActivityChartProps {
     logs?: any[];
+    textWhite?: boolean;
 }
 
-export default function StudyActivityChart({ logs = [] }: StudyActivityChartProps) {
+export default function StudyActivityChart({ logs = [], textWhite = false }: StudyActivityChartProps) {
     // Process logs into daily activity
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = new Date().getDay();
@@ -31,12 +32,12 @@ export default function StudyActivityChart({ logs = [] }: StudyActivityChartProp
         <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={textWhite ? 'rgba(255,255,255,0.1)' : '#f3f4f6'} />
                     <XAxis
                         dataKey="day"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#9ca3af', fontSize: 12 }}
+                        tick={{ fill: textWhite ? 'rgba(255,255,255,0.8)' : '#9ca3af', fontSize: 12 }}
                         dy={10}
                     />
                     <YAxis hide />

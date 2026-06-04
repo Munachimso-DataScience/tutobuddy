@@ -250,9 +250,7 @@ export default function DashboardPage() {
                             <option className="text-black">Last 30 Days</option>
                         </select>
                     </div>
-                    <div className="[&_*]:text-white dark:[&_*]:text-white">
-                        <StudyActivityChart logs={stats?.recentLogs} />
-                    </div>
+                        <StudyActivityChart logs={stats?.recentLogs} textWhite={true} />
                 </div>
 
                 {/* Readiness & Goals */}
